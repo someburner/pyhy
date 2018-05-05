@@ -275,10 +275,12 @@ class hydro_sign(object):
         # print('update: +%d' % mlen)
         h.hydro_sign_update(self.st, m.encode('utf8'), mlen)
 
-    def final_create(self, secret_key):
+    def final_create(self, secret_key, wipe=True):
         """use secret key to generate a signature"""
         buf = ffi.new('uint8_t[]', h.hydro_sign_BYTES)
         h.hydro_sign_final_create(self.st, buf, secret_key)
+        if wipe:
+            hydro_memzero(secret_key)
         return bytes(buf)
 
     def final_verify(self, sig, public_key):

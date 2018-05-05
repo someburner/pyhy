@@ -137,6 +137,8 @@ def test_signature_pass():
     ss1.update('first chunk')
     ss1.update('second chunk')
     sig = ss1.final_create(kp.sk)
+    # sig = ss1.final_create(kp.sk, wipe=False)
+    # dump_keypair_hex(kp)
     # print('Signature: ', sig.hex())
 
     ss2 = hydro_sign(TEST_CTX)

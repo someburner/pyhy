@@ -48,6 +48,15 @@ s2.update('second chunk')
 assert s2.final_verify(sig, kp.pk) == True
 ```
 
+**NOTE**: `final_create` will wipe the memory location of the passed in
+secret_key just after verification. According to `cffi`, the memory will be
+freed when it goes out of scope (which could be never), so it's on by default.
+But if you are signing tons of messages you can prevent that by doing:
+
+```py
+sig = s1.final_create(kp.sk, wipe=False)
+```
+
 It also seemed natural to use python for hex conversions. You can load or
 write in keys (for testing) like this:
 
@@ -75,6 +84,8 @@ This project uses cffi [docs](https://cffi.readthedocs.io/en/latest/)/[bitbucket
 virtualenv env --python=$(which python3)
 source env/bin/activate
 pip3 install cffi
+pip3 uninstall pyhy
+pip3 install pyhy --no-cache
 
 git clone https://github.com/someburner/pyhy.git
 cd pyhy
