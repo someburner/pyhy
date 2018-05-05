@@ -80,11 +80,17 @@ def dump_keypair_hex(pair):
 ################################################################################
 # rand
 ################################################################################
-def hydro_random_u32():
-    pass
+hydro_random_SEED = h.hydro_random_SEEDBYTES
+__all__ += [ 'hydro_random_SEED' ]
 
-def hydro_random_uniform():
-    pass
+def hydro_random_u32():
+    num = h.hydro_random_u32()
+    assert num >= 0
+    return num
+
+def hydro_random_uniform(ulimit):
+    num = h.hydro_random_uniform(ulimit)
+    return num
 
 def hydro_random_buf(ct):
     assert ct > 0
@@ -92,8 +98,12 @@ def hydro_random_buf(ct):
     h.hydro_random_buf(buf, ct)
     return bytes(buf)
 
-def hydro_random_buf_deterministic():
-    pass
+def hydro_random_buf_deterministic(ct, seed):
+    assert ct > 0
+    assert len(seed) == h.hydro_random_SEEDBYTES
+    buf = ffi.new('uint8_t[]', ct)
+    hydro_random_buf_deterministic(buf, ct, seed)
+    return bytes(buf)
 
 def hydro_random_ratchet():
     h.hydro_random_ratchet()
@@ -104,6 +114,14 @@ def hydro_random_reseed():
 ################################################################################
 # hash
 ################################################################################
+__all__ += [ 'hydro_hash_BYTES', 'hydro_hash_BYTES_MAX', 'hydro_hash_BYTES_MIN', 'hydro_hash_CONTEXTBYTES', 'hydro_hash_KEYBYTES' ]
+hydro_hash_BYTES        = h.hydro_hash_BYTES
+hydro_hash_BYTES_MAX    = h.hydro_hash_BYTES_MAX
+hydro_hash_BYTES_MIN    = h.hydro_hash_BYTES_MIN
+hydro_hash_CONTEXTBYTES = h.hydro_hash_CONTEXTBYTES
+hydro_hash_KEYBYTES     = h.hydro_hash_KEYBYTES
+hydro_hash_BYTES        = h.hydro_hash_BYTES
+
 def hydro_hash_keygen():
     pass
 
@@ -122,6 +140,12 @@ def hydro_hash_final():
 ################################################################################
 # kdf
 ################################################################################
+__all__ += [ 'hydro_kdf_CONTEXTBYTES', 'hydro_kdf_KEYBYTES', 'hydro_kdf_BYTES_MAX', 'hydro_kdf_BYTES_MIN' ]
+hydro_kdf_CONTEXTBYTES  = h.hydro_kdf_CONTEXTBYTES
+hydro_kdf_KEYBYTES      = h.hydro_kdf_KEYBYTES
+hydro_kdf_BYTES_MAX     = h.hydro_kdf_BYTES_MAX
+hydro_kdf_BYTES_MIN     = h.hydro_kdf_BYTES_MIN
+
 def hydro_kdf_master_keygen():
     buf = ffi.new('uint8_t[]', h.hydro_kdf_KEYBYTES)
     h.hydro_kdf_keygen(buf)
@@ -137,6 +161,12 @@ def hydro_kdf_derive_from_key(subkey_len, id, ctx, master_key):
 ################################################################################
 # Secretbox
 ################################################################################
+__all__ += [ 'hydro_secretbox_CONTEXTBYTES', 'hydro_secretbox_HEADERBYTES', 'hydro_secretbox_KEYBYTES', 'hydro_secretbox_PROBEBYTES' ]
+hydro_secretbox_CONTEXTBYTES    = h.hydro_secretbox_CONTEXTBYTES
+hydro_secretbox_HEADERBYTES     = h.hydro_secretbox_HEADERBYTES
+hydro_secretbox_KEYBYTES        = h.hydro_secretbox_KEYBYTES
+hydro_secretbox_PROBEBYTES      = h.hydro_secretbox_PROBEBYTES
+
 def hydro_secretbox_keygen():
     buf = ffi.new('uint8_t[]', h.hydro_secretbox_KEYBYTES)
     h.hydro_secretbox_keygen(buf)
@@ -175,6 +205,13 @@ def hydro_secretbox_probe_verify(p, c, ctx, key):
 ################################################################################
 # Sign
 ################################################################################
+__all__ += [ 'hydro_sign_BYTES', 'hydro_sign_CONTEXTBYTES', 'hydro_sign_SEEDBYTES', 'hydro_sign_PUBLICKEYBYTES', 'hydro_sign_SECRETKEYBYTES' ]
+hydro_sign_BYTES          = h.hydro_sign_BYTES
+hydro_sign_SEEDBYTES      = h.hydro_sign_SEEDBYTES
+hydro_sign_CONTEXTBYTES   = h.hydro_sign_CONTEXTBYTES
+hydro_sign_PUBLICKEYBYTES = h.hydro_sign_PUBLICKEYBYTES
+hydro_sign_SECRETKEYBYTES = h.hydro_sign_SECRETKEYBYTES
+
 def hydro_sign_keygen():
     pair = ffi.new('struct hydro_sign_keypair *')
     h.hydro_sign_keygen(pair)
@@ -215,10 +252,20 @@ class hydro_sign(object):
 ################################################################################
 # kx
 ################################################################################
+__all__ += [ 'hydro_kx_SESSIONKEYBYTES', 'hydro_kx_PUBLICKEYBYTES', 'hydro_kx_SECRETKEYBYTES', 'hydro_kx_PSKBYTES', 'hydro_kx_SEEDBYTES' ]
+hydro_kx_SESSIONKEYBYTES = h.hydro_kx_SESSIONKEYBYTES
+hydro_kx_PUBLICKEYBYTES  = h.hydro_kx_PUBLICKEYBYTES
+hydro_kx_SECRETKEYBYTES  = h.hydro_kx_SECRETKEYBYTES
+hydro_kx_PSKBYTES        = h.hydro_kx_PSKBYTES
+hydro_kx_SEEDBYTES       = h.hydro_kx_SEEDBYTES
+
 def hydro_kx_keygen():
     pass
 
 # ----------  N  ---------- #
+__all__ += [ 'hydro_kx_N_PACKET1BYTES' ]
+hydro_kx_N_PACKET1BYTES = h.hydro_kx_N_PACKET1BYTES
+
 def hydro_kx_n_1():
     pass
 
@@ -226,6 +273,9 @@ def hydro_kx_n_2():
     pass
 
 # ---------- KK ----------- #
+__all__ += [ 'hydro_kx_KK_PACKET1BYTES', 'hydro_kx_KK_PACKET2BYTES' ]
+hydro_kx_KK_PACKET1BYTES = h.hydro_kx_KK_PACKET1BYTES
+hydro_kx_KK_PACKET2BYTES = h.hydro_kx_KK_PACKET2BYTES
 def hydro_kx_kk_1():
     pass
 
@@ -236,6 +286,11 @@ def hydro_kx_kk_3():
     pass
 
 # ---------- XX ----------- #
+__all__ += [ 'hydro_kx_XX_PACKET1BYTES', 'hydro_kx_XX_PACKET2BYTES', 'hydro_kx_XX_PACKET3BYTES' ]
+hydro_kx_XX_PACKET1BYTES = h.hydro_kx_XX_PACKET1BYTES
+hydro_kx_XX_PACKET2BYTES = h.hydro_kx_XX_PACKET2BYTES
+hydro_kx_XX_PACKET3BYTES = h.hydro_kx_XX_PACKET3BYTES
+
 def hydro_kx_xx_1():
     pass
 
@@ -254,6 +309,11 @@ def hydro_kx_xx_4():
 ################################################################################
 # pwhash
 ################################################################################
+__all__ += [ 'hydro_pwhash_CONTEXTBYTES', 'hydro_pwhash_MASTERKEYBYTES', 'hydro_pwhash_STOREDBYTES' ]
+hydro_pwhash_CONTEXTBYTES = h.hydro_pwhash_CONTEXTBYTES
+hydro_pwhash_MASTERKEYBYTES = h.hydro_pwhash_MASTERKEYBYTES
+hydro_pwhash_STOREDBYTES = h.hydro_pwhash_STOREDBYTES
+
 def hydro_pwhash_keygen():
     pass
 

@@ -9,9 +9,46 @@ FAIL_CTX = '1234test'
 INVALID_CTX = '123456789'
 STATIC_MASTER_KEY = bytes(b'\x82\xb8\x22\x0b\x8b\xb1\xf3\x2b\x63\x68\x9c\xca\x0f\x73\x86\xc3\x7a\x09\xbf\x76\xbd\x66\xf0\xca\x40\x17\x62\x94\x7a\x93\x92\x22')
 
+
 ################################################################################
-# hashing - TODO
+# rand
 ################################################################################
+MAX_U32 = 2**32
+MAX_U64 = 2**64
+
+def assert_u32(n):
+    assert (n >= 0) and (n < MAX_U32), 'got invalid u32 %d' % n
+
+def test_rand():
+    n = hydro_random_u32()
+    assert_u32(n)
+    assert (n >= 0) and (n < MAX_U32), 'got invalid u32 %d' % n
+    for i in range(1, 128):
+        n = hydro_random_uniform(i)
+        assert_u32(n)
+    nbuf = hydro_random_buf( hydro_random_SEED )
+    # nbuf = hydro_random_buf(i, seed)
+    # assert len(nbuf) == i
+    hydro_random_ratchet()
+    hydro_random_reseed()
+
+################################################################################
+# hash
+################################################################################
+def hydro_hash_keygen():
+    pass
+
+def hydro_hash_hash():
+    pass
+
+def hydro_hash_init():
+    pass
+
+def hydro_hash_update():
+    pass
+
+def hydro_hash_final():
+    pass
 
 
 ################################################################################
@@ -131,8 +168,6 @@ def test_other():
     except Exception as e: print('Bad ctx len assertion ok')
     try: oops = hydro_sign(1234)
     except Exception as e: print('Bad ctx type assertion ok')
-    hydro_random_ratchet()
-    hydro_random_reseed()
 
 ################################################################################
 # Init
@@ -141,7 +176,8 @@ def test_other():
 def main():
     # wrapper
     print( hydro_version() )
-    test_other()
+    # rand
+    test_rand()
     # kdf
     test_kdf()
     # secretbox
@@ -150,6 +186,7 @@ def main():
     # sign
     test_signature_pass()
     test_signature_fail()
+    test_other()
     # kx - n
     # kx - kk
     # kx - xx
