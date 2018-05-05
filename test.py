@@ -11,7 +11,7 @@ STATIC_MASTER_KEY = bytes(b'\x82\xb8\x22\x0b\x8b\xb1\xf3\x2b\x63\x68\x9c\xca\x0f
 
 
 ################################################################################
-# rand
+# rand - TODO better tests
 ################################################################################
 MAX_U32 = 2**32
 MAX_U64 = 2**64
@@ -27,28 +27,36 @@ def test_rand():
         n = hydro_random_uniform(i)
         assert_u32(n)
     nbuf = hydro_random_buf( hydro_random_SEED )
+    assert len(nbuf) == hydro_random_SEED
+    dbuf = hydro_random_buf_deterministic(1234, nbuf)
+    assert len(dbuf) == 1234
+
     # nbuf = hydro_random_buf(i, seed)
-    # assert len(nbuf) == i
     hydro_random_ratchet()
     hydro_random_reseed()
 
 ################################################################################
-# hash
+# hash - TODO: min/max outlen for hash_ash
 ################################################################################
-def hydro_hash_keygen():
-    pass
+def test_hash():
+    hkey = hydro_hash_keygen()
+    print('hash_keygen:', hkey.hex())
+    hash = hydro_hash_hash(hydro_hash_BYTES*2, 'Arbitrary data to hash', TEST_CTX, hkey)
+    print('hash_hash:', hash.hex())
+    hash = hydro_hash_hash(hydro_hash_BYTES*2, 'Arbitrary data to hash', TEST_CTX)
+    print('hash_hash (no key):', hash.hex())
 
-def hydro_hash_hash():
-    pass
-
-def hydro_hash_init():
-    pass
-
-def hydro_hash_update():
-    pass
-
-def hydro_hash_final():
-    pass
+    h1 = hydro_hash(TEST_CTX, hkey)
+    h1.update('some data')
+    h1.update('more data')
+    h1hash = h1.final()
+    # print('h1hash:', h1hash.hex())
+    h2 = hydro_hash(TEST_CTX, hkey)
+    h2.update('some data')
+    h2.update('more data')
+    h2hash = h2.final()
+    assert h1hash == h2hash
+    print('h1hash == h2hash')
 
 
 ################################################################################
@@ -176,8 +184,11 @@ def test_other():
 def main():
     # wrapper
     print( hydro_version() )
+    print( pyhy_version() )
     # rand
     test_rand()
+    # hash
+    test_hash()
     # kdf
     test_kdf()
     # secretbox

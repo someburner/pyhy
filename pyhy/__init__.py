@@ -7,6 +7,7 @@ __all__ = [
     # internal
     'hydro_call_init',
     'hydro_version',
+    'pyhy_version',
     'dump_keypair_hex',
     # rand
     'hydro_random_u32',
@@ -18,9 +19,7 @@ __all__ = [
     # hash
     'hydro_hash_keygen',
     'hydro_hash_hash',
-    'hydro_hash_init',
-    'hydro_hash_update',
-    'hydro_hash_final',
+    'hydro_hash', # hydro_hash_init, hydro_hash_update, hydro_hash_final
     # kdf
     'hydro_kdf_master_keygen',
     'hydro_kdf_derive_from_key',
@@ -59,6 +58,7 @@ __all__ = [
 ]
 
 h.hydro_init()
+__version__ =  '0.0.3'
 
 ################################################################################
 # Internal utilities
@@ -68,6 +68,9 @@ def hydro_call_init():
 
 def hydro_version():
     return 'libhydrogen v%d.%d' % (h.HYDRO_VERSION_MAJOR, h.HYDRO_VERSION_MINOR)
+
+def pyhy_version():
+    return 'pyhy v%s' % __version__
 
 def dump_keypair_hex(pair):
     print('\ndump_keypair_hex')
@@ -80,8 +83,8 @@ def dump_keypair_hex(pair):
 ################################################################################
 # rand
 ################################################################################
-hydro_random_SEED = h.hydro_random_SEEDBYTES
 __all__ += [ 'hydro_random_SEED' ]
+hydro_random_SEED = h.hydro_random_SEEDBYTES
 
 def hydro_random_u32():
     num = h.hydro_random_u32()
@@ -102,7 +105,7 @@ def hydro_random_buf_deterministic(ct, seed):
     assert ct > 0
     assert len(seed) == h.hydro_random_SEEDBYTES
     buf = ffi.new('uint8_t[]', ct)
-    hydro_random_buf_deterministic(buf, ct, seed)
+    h.hydro_random_buf_deterministic(buf, ct, seed)
     return bytes(buf)
 
 def hydro_random_ratchet():
@@ -123,19 +126,44 @@ hydro_hash_KEYBYTES     = h.hydro_hash_KEYBYTES
 hydro_hash_BYTES        = h.hydro_hash_BYTES
 
 def hydro_hash_keygen():
-    pass
+    buf = ffi.new('uint8_t[]', h.hydro_hash_KEYBYTES)
+    h.hydro_hash_keygen(buf)
+    return bytes(buf)
 
-def hydro_hash_hash():
-    pass
+# https://github.com/jedisct1/libhydrogen/wiki/Generic-hashing
+class hydro_hash(object):
+    """wrapper class for hash creation, verification"""
+    def __init__(self, ctx, key):
+        """Creates a hydro_hash_state object with ctx and key (both required)"""
+        assert (type(ctx) == str) and (len(ctx) == 8)
+        assert len(key) == hydro_hash_KEYBYTES
+        self.st = ffi.new('struct hydro_hash_state *')
+        h.hydro_hash_init(self.st, ctx.encode('utf8'), key)
 
-def hydro_hash_init():
-    pass
+    def update(self, m):
+        mlen = len(m)
+        # print('update: +%d' % mlen)
+        h.hydro_hash_update(self.st, m.encode('utf8'), mlen)
 
-def hydro_hash_update():
-    pass
+    def final(self):
+        """use secret key to generate a signature"""
+        buf = ffi.new('uint8_t[]', h.hydro_hash_BYTES)
+        h.hydro_hash_final(self.st, buf, h.hydro_hash_BYTES)
+        return bytes(buf)
 
-def hydro_hash_final():
-    pass
+# int
+# hydro_hash_hash(uint8_t *out, size_t out_len, const void *in_,
+# size_t in_len, const char ctx[hydro_hash_CONTEXTBYTES], const uint8_t *key);
+def hydro_hash_hash(outlen, d, ctx, key=None):
+    assert (type(ctx) == str) and (len(ctx) == 8)
+    assert (outlen >= h.hydro_hash_BYTES_MIN) and (outlen <= hydro_hash_BYTES_MAX)
+    dlen = len(d)
+    buf = ffi.new('uint8_t[]', outlen)
+    if key is None:
+        key = ffi.NULL
+    if h.hydro_hash_hash(buf, outlen, d.encode('utf8'), dlen, ctx.encode('utf8'), key) == -1:
+        return None
+    return bytes(buf)
 
 ################################################################################
 # kdf
@@ -363,7 +391,6 @@ def hydro_unpad():
     pass
 
 ################################################################################
-__version__ =  '0.0.2'
 
 
 
