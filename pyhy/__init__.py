@@ -9,6 +9,8 @@ __all__ = [
     'hydro_version',
     'pyhy_version',
     'dump_keypair_hex',
+    'hexify',
+    'unhexify',
     # rand
     'hydro_random_u32',
     'hydro_random_uniform',
@@ -58,7 +60,7 @@ __all__ = [
 ]
 
 h.hydro_init()
-__version__ =  '0.0.3'
+__version__ =  '0.0.4'
 
 ################################################################################
 # Internal utilities
@@ -79,6 +81,16 @@ def dump_keypair_hex(pair):
         print('\tpk', bytes(pair.pk).hex())
     except Exception as e:
         print('ERROR: keypair must have pk, sk fields')
+
+def hexify(s):
+    return ''.join('%02X' % c for c in s)
+
+def unhexify(hs):
+    s = bytes()
+    for i in range(0, len(hs) - 1, 2):
+        hex_string = hs[i:i + 2]
+        s += bytes([int(hex_string, 16)])
+    return s
 
 ################################################################################
 # rand
@@ -263,15 +275,16 @@ class hydro_sign(object):
         # print('update: +%d' % mlen)
         h.hydro_sign_update(self.st, m.encode('utf8'), mlen)
 
-    def final_create(self, pair):
+    def final_create(self, secret_key):
         """use secret key to generate a signature"""
         buf = ffi.new('uint8_t[]', h.hydro_sign_BYTES)
-        h.hydro_sign_final_create(self.st, buf, bytes(pair.sk))
+        h.hydro_sign_final_create(self.st, buf, secret_key)
         return bytes(buf)
 
-    def final_verify(self, sig, pair):
+    def final_verify(self, sig, public_key):
         """use public key to verify a signature"""
-        result = h.hydro_sign_final_verify(self.st, sig, bytes(pair.pk))
+        # print('final_verify %s' % str(dir(public_key)))
+        result = h.hydro_sign_final_verify(self.st, sig, public_key)
         if result != 0:
             # print('Final verify = %d' % result)
             return False
@@ -371,11 +384,26 @@ def hydro_pwhash_upgrade():
 ################################################################################
 # helpers
 ################################################################################
-def hydro_memzero():
-    pass
+def hydro_memzero(obj, dump_loc=False):
+    if (dump_loc == True):
+        print( 'hydro_memzero location: %x' % id(obj) )
+    if obj is not None:
+        h.hydro_memzero(obj, len(obj))
 
-def hydro_equal():
-    pass
+def hydro_equal(obj1, obj2, cmplen=0):
+    """if len=0/not provided, assume obj comparison for equal len"""
+    obj1len = len(obj1)
+    obj2len = len(obj2)
+    if not cmplen:
+        if obj1len != obj2len:
+            return False
+        else:
+            return (h.hydro_equal(obj1, obj2, len(obj1)) == 1)
+    else:
+        if (obj1len <= cmplen) and (obj2len <= cmplen):
+            return (h.hydro_equal(obj1, obj2, cmplen) == 1)
+    print('Warning: avoiding dangerous comparison')
+    return False
 
 def hydro_bin2hex():
     pass
@@ -383,8 +411,9 @@ def hydro_bin2hex():
 def hydro_hex2bin():
     pass
 
-def hydro_increment():
-    pass
+def hydro_increment(obj):
+    objlen = len(obj)
+    h.hydro_increment(obj, objlen)
 
 def hydro_compare():
     pass

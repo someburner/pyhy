@@ -136,13 +136,13 @@ def test_signature_pass():
     ss1 = hydro_sign(TEST_CTX)
     ss1.update('first chunk')
     ss1.update('second chunk')
-    sig = ss1.final_create(kp)
+    sig = ss1.final_create(kp.sk)
     # print('Signature: ', sig.hex())
 
     ss2 = hydro_sign(TEST_CTX)
     ss2.update('first chunk')
     ss2.update('second chunk')
-    assert ss2.final_verify(sig, kp) == True, 'signature verification failed'
+    assert ss2.final_verify(sig, kp.pk) == True, 'signature verification failed'
     print('OK: signature verified')
 
 def test_signature_fail():
@@ -151,16 +151,29 @@ def test_signature_fail():
     ss1 = hydro_sign(TEST_CTX)
     ss1.update('first chunk')
     ss1.update('second chunk')
-    sig = ss1.final_create(kp)
+    sig = ss1.final_create(kp.sk)
     # print('Signature: ', sig.hex())
 
     ss2 = hydro_sign(TEST_CTX)
     ss2.update('first chunk')
     ss2.update('second chunk')
     ss2.update('third chunk weeeee')
-    assert ss2.final_verify(sig, kp) == False, 'signature verification should have failed'
+    assert ss2.final_verify(sig, kp.sk) == False, 'signature verification should have failed'
     print('OK: signature verification failed')
 
+def test_sign_readme():
+    YOUR_CTX = 'context1'
+    kp = hydro_sign_keygen()
+    s1 = hydro_sign(YOUR_CTX)
+    s1.update('first chunk')
+    s1.update('second chunk')
+    sig = s1.final_create(kp.sk)
+    print('Signature: ', sig.hex())
+
+    s2 = hydro_sign(YOUR_CTX)
+    s2.update('first chunk')
+    s2.update('second chunk')
+    assert s2.final_verify(sig, kp.pk) == True
 
 ################################################################################
 # kx - TODO
@@ -174,6 +187,7 @@ TEST_PW = 'shittypassword'
 TEST_PW_CTX = 'password'
 
 def test_pwhash():
+    print('\ntest_pwhash')
     master_key = hydro_pwhash_keygen()
     # print('pwhash master_key:', master_key.hex() )
     pwkey = hydro_pwhash_deterministic(TEST_PW, TEST_PW_CTX, master_key)
@@ -184,11 +198,68 @@ def test_pwhash():
 # other
 ################################################################################
 def test_other():
+    print('\ntest_other')
     # context integrity checks
     try: oops = hydro_sign(INVALID_CTX)
     except Exception as e: print('Bad ctx len assertion ok')
     try: oops = hydro_sign(1234)
     except Exception as e: print('Bad ctx type assertion ok')
+
+def test_hexify():
+    print('\ntest_hexify')
+    YOUR_CTX = 'context1'
+    # kp = hydro_sign_keygen()
+    # dump_keypair_hex(kp)
+    your_sk_hex = 'a3d8acb3055b370085a15a1357354545fe28f29933c38745e723cdacfdb0b1bf7e36d864be0145ded2912ceb05c0e66257e8db78e5eb0dd880345c842e7e1d1b'
+    your_pk_hex = '7e36d864be0145ded2912ceb05c0e66257e8db78e5eb0dd880345c842e7e1d1b'
+    s1 = hydro_sign(YOUR_CTX)
+    s1.update('first chunk')
+    s1.update('second chunk')
+    sig = s1.final_create( unhexify(your_sk_hex) )
+    print('Signature: ', sig.hex())
+
+    s2 = hydro_sign(YOUR_CTX)
+    s2.update('first chunk')
+    s2.update('second chunk')
+    assert s2.final_verify(sig, unhexify(your_pk_hex)) == True
+
+    your_sig_hex = 'f6db10e2e9d91297c30db2df5a85aba99abcf57aaf0ca99a8f849582f756e81785e32d9f73d250b9492bb8e0d7ce07df5bbc3f1875b13e1c1473b5d59c38b606'
+    s2 = hydro_sign(YOUR_CTX)
+    s2.update('first chunk')
+    s2.update('second chunk')
+    assert s2.final_verify( unhexify(your_sig_hex), unhexify(your_pk_hex)) == True
+    print('Hardcoded pk/sk/sig ok')
+
+def test_helpers():
+    import time
+    print('\ntest_helpers')
+    nbuf = hydro_random_buf( 32 )
+    print('memzero before: %s' % nbuf.hex())
+    hydro_memzero(nbuf, dump_loc=True)
+    print( 'after location: %x' % id(nbuf) )
+    print('memzero after: %s' % nbuf.hex())
+
+    nbuf = hydro_random_buf( 32 )
+    nbuf2 = hydro_random_buf( 32 )
+    assert (hydro_equal(nbuf, nbuf2) == False)
+    hydro_memzero(nbuf)
+    hydro_memzero(nbuf2)
+    assert (hydro_equal(nbuf, nbuf2) == True)
+    assert (hydro_equal(nbuf, nbuf2, 32) == True)
+    nbuf2 = hydro_random_buf( 10 )
+    assert (hydro_equal(nbuf, nbuf2, 10) == False)
+    assert (hydro_equal(nbuf, nbuf2, 512) == False)
+    assert (hydro_equal('test1'.encode('utf8'), 'test2'.encode('utf8')) == False)
+    assert (hydro_equal('test1'.encode('utf8'), 'test1'.encode('utf8')) == True)
+
+    nbuf = hydro_random_buf( 4 )
+    hydro_memzero(nbuf)
+    for i in range(0, 2**12):
+        hydro_increment(nbuf)
+        sys.stdout.write( '\r%s\r' % nbuf.hex() )
+        time.sleep(0.000001)
+    print('\nnbuf final: %s\r' % nbuf.hex())
+    assert nbuf.hex() == '00100000'
 
 ################################################################################
 # Init
@@ -210,12 +281,16 @@ def main():
     # sign
     test_signature_pass()
     test_signature_fail()
+    test_sign_readme()
     test_other()
+    test_hexify()
     # kx - n
     # kx - kk
     # kx - xx
     # pwhash
     test_pwhash()
+    # helpers
+    test_helpers()
     return
 
 
