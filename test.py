@@ -168,6 +168,19 @@ def test_signature_fail():
 
 
 ################################################################################
+# pwhash
+################################################################################
+TEST_PW = 'shittypassword'
+TEST_PW_CTX = 'password'
+
+def test_pwhash():
+    master_key = hydro_pwhash_keygen()
+    # print('pwhash master_key:', master_key.hex() )
+    pwkey = hydro_pwhash_deterministic(TEST_PW, TEST_PW_CTX, master_key)
+    print('pwhash for %s: %s' % (TEST_PW, pwkey.hex()))
+    assert pwkey == hydro_pwhash_deterministic(TEST_PW, TEST_PW_CTX, master_key)
+
+################################################################################
 # other
 ################################################################################
 def test_other():
@@ -201,6 +214,8 @@ def main():
     # kx - n
     # kx - kk
     # kx - xx
+    # pwhash
+    test_pwhash()
     return
 
 

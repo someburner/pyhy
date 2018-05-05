@@ -343,10 +343,15 @@ hydro_pwhash_MASTERKEYBYTES = h.hydro_pwhash_MASTERKEYBYTES
 hydro_pwhash_STOREDBYTES = h.hydro_pwhash_STOREDBYTES
 
 def hydro_pwhash_keygen():
-    pass
+    buf = ffi.new('uint8_t[]', h.hydro_pwhash_MASTERKEYBYTES)
+    h.hydro_pwhash_keygen(buf)
+    return bytes(buf)
 
-def hydro_pwhash_deterministic():
-    pass
+def hydro_pwhash_deterministic(pw, ctx, master_key, ops_limit=10000, mem_limit=0, threads=1):
+    buf = ffi.new('uint8_t[]', 32)
+    pwlen = len(pw)
+    h.hydro_pwhash_deterministic(buf, 32, pw.encode('utf8'), pwlen, ctx.encode('utf8'), master_key, ops_limit, mem_limit, threads)
+    return bytes(buf)
 
 def hydro_pwhash_create():
     pass
