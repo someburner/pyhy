@@ -8,6 +8,19 @@ __all__ = [
     'hydro_call_init',
     'hydro_version',
     'dump_keypair_hex',
+    # rand
+    'hydro_random_u32',
+    'hydro_random_uniform',
+    'hydro_random_buf',
+    'hydro_random_buf_deterministic',
+    'hydro_random_ratchet',
+    'hydro_random_reseed',
+    # hash
+    'hydro_hash_keygen',
+    'hydro_hash_hash',
+    'hydro_hash_init',
+    'hydro_hash_update',
+    'hydro_hash_final',
     # kdf
     'hydro_kdf_master_keygen',
     'hydro_kdf_derive_from_key',
@@ -21,15 +34,29 @@ __all__ = [
     'hydro_sign',
     'hydro_sign_keygen',
     'hydro_sign_keygen_deterministic',
-    # util
-    'hydro_random_buf',
-    'hydro_random_ratchet',
-    'hydro_random_reseed'
+    # kx
+    'hydro_kx_keygen', # all
+    'hydro_kx_n_1',  'hydro_kx_n_2', # N
+    'hydro_kx_kk_1', 'hydro_kx_kk_2', 'hydro_kx_kk_3', # KK
+    'hydro_kx_xx_1', 'hydro_kx_xx_2', 'hydro_kx_xx_3', 'hydro_kx_xx_4', # XX
+    # pwhash
+    'hydro_pwhash_keygen',
+    'hydro_pwhash_deterministic',
+    'hydro_pwhash_create',
+    'hydro_pwhash_verify',
+    'hydro_pwhash_derive_static_key',
+    'hydro_pwhash_reencrypt',
+    'hydro_pwhash_upgrade',
+    # helpers
+    'hydro_memzero',
+    'hydro_equal',
+    'hydro_bin2hex',
+    'hydro_hex2bin',
+    'hydro_increment',
+    'hydro_compare',
+    'hydro_pad',
+    'hydro_unpad'
 ]
-
-# __all__ += [
-# 'tmp'
-# ]
 
 h.hydro_init()
 
@@ -49,6 +76,48 @@ def dump_keypair_hex(pair):
         print('\tpk', bytes(pair.pk).hex())
     except Exception as e:
         print('ERROR: keypair must have pk, sk fields')
+
+################################################################################
+# rand
+################################################################################
+def hydro_random_u32():
+    pass
+
+def hydro_random_uniform():
+    pass
+
+def hydro_random_buf(ct):
+    assert ct > 0
+    buf = ffi.new('uint8_t[]', ct)
+    h.hydro_random_buf(buf, ct)
+    return bytes(buf)
+
+def hydro_random_buf_deterministic():
+    pass
+
+def hydro_random_ratchet():
+    h.hydro_random_ratchet()
+
+def hydro_random_reseed():
+    h.hydro_random_reseed()
+
+################################################################################
+# hash
+################################################################################
+def hydro_hash_keygen():
+    pass
+
+def hydro_hash_hash():
+    pass
+
+def hydro_hash_init():
+    pass
+
+def hydro_hash_update():
+    pass
+
+def hydro_hash_final():
+    pass
 
 ################################################################################
 # kdf
@@ -144,19 +213,94 @@ class hydro_sign(object):
         return True
 
 ################################################################################
-# Utilities
+# kx
 ################################################################################
-def hydro_random_buf(ct):
-    assert ct > 0
-    buf = ffi.new('uint8_t[]', ct)
-    h.hydro_random_buf(buf, ct)
-    return bytes(buf)
+def hydro_kx_keygen():
+    pass
 
-def hydro_random_ratchet():
-    h.hydro_random_ratchet()
+# ----------  N  ---------- #
+def hydro_kx_n_1():
+    pass
 
-def hydro_random_reseed():
-    h.hydro_random_reseed()
+def hydro_kx_n_2():
+    pass
+
+# ---------- KK ----------- #
+def hydro_kx_kk_1():
+    pass
+
+def hydro_kx_kk_2():
+    pass
+
+def hydro_kx_kk_3():
+    pass
+
+# ---------- XX ----------- #
+def hydro_kx_xx_1():
+    pass
+
+def hydro_kx_xx_2():
+    pass
+
+def hydro_kx_xx_3():
+    pass
+
+def hydro_kx_xx_3():
+    pass
+
+def hydro_kx_xx_4():
+    pass
+
+################################################################################
+# pwhash
+################################################################################
+def hydro_pwhash_keygen():
+    pass
+
+def hydro_pwhash_deterministic():
+    pass
+
+def hydro_pwhash_create():
+    pass
+
+def hydro_pwhash_verify():
+    pass
+
+def hydro_pwhash_derive_static_key():
+    pass
+
+def hydro_pwhash_reencrypt():
+    pass
+
+def hydro_pwhash_upgrade():
+    pass
+
+################################################################################
+# helpers
+################################################################################
+def hydro_memzero():
+    pass
+
+def hydro_equal():
+    pass
+
+def hydro_bin2hex():
+    pass
+
+def hydro_hex2bin():
+    pass
+
+def hydro_increment():
+    pass
+
+def hydro_compare():
+    pass
+
+def hydro_pad():
+    pass
+
+def hydro_unpad():
+    pass
 
 ################################################################################
 __version__ =  '0.0.2'
