@@ -3,12 +3,16 @@
 from _libhydrogen import ffi
 from _libhydrogen import lib as h
 
+# Documentation:
+# https://github.com/jedisct1/libhydrogen/wiki
+
 __all__ = [
     # internal
     'hydro_call_init',
     'hydro_version',
     'pyhy_version',
     'dump_keypair_hex',
+    'dump_session_keypair_hex',
     'hexify',
     'unhexify',
     # rand
@@ -36,10 +40,16 @@ __all__ = [
     'hydro_sign_keygen',
     'hydro_sign_keygen_deterministic',
     # kx
-    'hydro_kx_keygen', # all
-    'hydro_kx_n_1',  'hydro_kx_n_2', # N
-    'hydro_kx_kk_1', 'hydro_kx_kk_2', 'hydro_kx_kk_3', # KK
-    'hydro_kx_xx_1', 'hydro_kx_xx_2', 'hydro_kx_xx_3', 'hydro_kx_xx_4', # XX
+    'hydro_kx_keygen',
+    'hydro_kx_keygen_deterministic',
+    # kx - NOISE_N
+    'hydro_kx_n_1',  'hydro_kx_n_2',
+    # kx - NOISE_KK
+    'hydro_kx_kk_1', 'hydro_kx_kk_2', 'hydro_kx_kk_3',
+    'hydro_kx_kk_client',
+    # kx - NOISE_XX
+    'hydro_kx_xx_1', 'hydro_kx_xx_2', 'hydro_kx_xx_3', 'hydro_kx_xx_4',
+    'hydro_kx_xx_client', 'hydro_kx_xx_server',
     # pwhash
     'hydro_pwhash_keygen',
     'hydro_pwhash_deterministic',
@@ -81,6 +91,14 @@ def dump_keypair_hex(pair):
         print('\tpk', bytes(pair.pk).hex())
     except Exception as e:
         print('ERROR: keypair must have pk, sk fields')
+
+def dump_session_keypair_hex(pair):
+    print('\ndump_session_keypair_hex')
+    try:
+        print('\ttx', bytes(pair.tx).hex())
+        print('\trx', bytes(pair.rx).hex())
+    except Exception as e:
+        print('ERROR: keypair must have tx, rx fields')
 
 def hexify(s):
     return ''.join('%02X' % c for c in s)
@@ -253,12 +271,12 @@ hydro_sign_PUBLICKEYBYTES = h.hydro_sign_PUBLICKEYBYTES
 hydro_sign_SECRETKEYBYTES = h.hydro_sign_SECRETKEYBYTES
 
 def hydro_sign_keygen():
-    pair = ffi.new('struct hydro_sign_keypair *')
+    pair = ffi.new('hydro_sign_keypair *')
     h.hydro_sign_keygen(pair)
     return pair
 
 def hydro_sign_keygen_deterministic(seed):
-    pair = ffi.new('struct hydro_sign_keypair *')
+    pair = ffi.new('hydro_sign_keypair *')
     h.hydro_sign_keygen_deterministic(pair, seed)
     return pair
 
@@ -267,7 +285,7 @@ class hydro_sign(object):
     def __init__(self, ctx):
         """Creates a hydro_sign_state object with (required) ctx"""
         assert (type(ctx) == str) and (len(ctx) == 8)
-        self.st = ffi.new('struct hydro_sign_state *')
+        self.st = ffi.new('hydro_sign_state *')
         h.hydro_sign_init(self.st, ctx.encode('utf8'))
 
     def update(self, m):
@@ -294,6 +312,13 @@ class hydro_sign(object):
 
 ################################################################################
 # kx
+# NOTE: These support optional pre-shared secret keys
+# - If psk is not NULL, the same value has to be used with all functions
+#   involved in the key exchange, and be the same for both client and server
+# - In variants accepting anonymous clients, the PSK can be useful to restrict
+#   access to a set of clients knowing this extra key
+# - In variants requiring more than a single round-trip, the PSK can be useful
+#   to avoid extra round trips on unsuccessful authentication attempts
 ################################################################################
 __all__ += [ 'hydro_kx_SESSIONKEYBYTES', 'hydro_kx_PUBLICKEYBYTES', 'hydro_kx_SECRETKEYBYTES', 'hydro_kx_PSKBYTES', 'hydro_kx_SEEDBYTES' ]
 hydro_kx_SESSIONKEYBYTES = h.hydro_kx_SESSIONKEYBYTES
@@ -303,30 +328,71 @@ hydro_kx_PSKBYTES        = h.hydro_kx_PSKBYTES
 hydro_kx_SEEDBYTES       = h.hydro_kx_SEEDBYTES
 
 def hydro_kx_keygen():
-    pass
+    pair = ffi.new('hydro_kx_keypair *')
+    h.hydro_kx_keygen(pair)
+    return pair
+
+def hydro_kx_keygen_deterministic(seed):
+    pair = ffi.new('hydro_kx_keypair *')
+    h.hydro_kx_keygen_deterministic(pair, seed)
+    return pair
 
 # ----------  N  ---------- #
 __all__ += [ 'hydro_kx_N_PACKET1BYTES' ]
 hydro_kx_N_PACKET1BYTES = h.hydro_kx_N_PACKET1BYTES
 
-def hydro_kx_n_1():
-    pass
+def hydro_kx_n_1(server_pubkey, psk=None):
+    """client: generate session keys + packet with pubkey"""
+    if psk is None:
+        psk = ffi.NULL
+    session_kp_client = ffi.new('hydro_kx_session_keypair *')
+    packet1 = ffi.new('uint8_t[]', h.hydro_kx_N_PACKET1BYTES)
+    if (h.hydro_kx_n_1(session_kp_client, packet1, psk, server_pubkey) != 0):
+        return (None, None)
+    return (session_kp_client, bytes(packet1))
 
-def hydro_kx_n_2():
-    pass
+def hydro_kx_n_2(kp, pkt1, psk=None):
+    if psk is None:
+        psk = ffi.NULL
+    session_kp_server = ffi.new('hydro_kx_session_keypair *')
+    if (h.hydro_kx_n_2(session_kp_server, pkt1, psk, kp) != 0):
+        return None
+    return session_kp_server
 
 # ---------- KK ----------- #
 __all__ += [ 'hydro_kx_KK_PACKET1BYTES', 'hydro_kx_KK_PACKET2BYTES' ]
 hydro_kx_KK_PACKET1BYTES = h.hydro_kx_KK_PACKET1BYTES
 hydro_kx_KK_PACKET2BYTES = h.hydro_kx_KK_PACKET2BYTES
-def hydro_kx_kk_1():
-    pass
 
-def hydro_kx_kk_2():
-    pass
+def hydro_kx_kk_1(st_client, server_pubkey, client_kp):
+    pkt1 = ffi.new('uint8_t[]', h.hydro_kx_KK_PACKET1BYTES)
+    if (h.hydro_kx_kk_1(st_client, pkt1, server_pubkey, client_kp) != 0):
+        return None
+    return bytes(pkt1)
 
-def hydro_kx_kk_3():
-    pass
+def hydro_kx_kk_2(pkt1, client_pubkey, server_kp):
+    pkt2 = ffi.new('uint8_t[]', h.hydro_kx_KK_PACKET2BYTES)
+    session_kp_server = ffi.new('hydro_kx_session_keypair *')
+    if (h.hydro_kx_kk_2(session_kp_server, pkt2, pkt1, client_pubkey, server_kp) != 0):
+        return (None, None)
+    return (session_kp_server, bytes(pkt2))
+
+def hydro_kx_kk_3(st_client, pkt2, server_pubkey):
+    session_kp_client = ffi.new('hydro_kx_session_keypair *')
+    if (h.hydro_kx_kk_3(st_client, session_kp_client, pkt2, server_pubkey) != 0):
+        return None
+    return session_kp_client
+
+class hydro_kx_kk_client(object):
+    """wrapper class for client for kk-type kx"""
+    def __init__(self):
+        self.st = ffi.new('hydro_kx_state *')
+
+    def kk_1(self, server_pubkey, client_kp):
+        return hydro_kx_kk_1(self.st, server_pubkey, client_kp)
+
+    def kk_3(self, pkt2, server_pubkey):
+        return hydro_kx_kk_3(self.st, pkt2, server_pubkey)
 
 # ---------- XX ----------- #
 __all__ += [ 'hydro_kx_XX_PACKET1BYTES', 'hydro_kx_XX_PACKET2BYTES', 'hydro_kx_XX_PACKET3BYTES' ]
@@ -334,20 +400,69 @@ hydro_kx_XX_PACKET1BYTES = h.hydro_kx_XX_PACKET1BYTES
 hydro_kx_XX_PACKET2BYTES = h.hydro_kx_XX_PACKET2BYTES
 hydro_kx_XX_PACKET3BYTES = h.hydro_kx_XX_PACKET3BYTES
 
-def hydro_kx_xx_1():
-    pass
+def hydro_kx_xx_1(st_client, psk=None):
+    """Client: initiate a key exchange"""
+    if psk is None:
+        psk = ffi.NULL
+    pkt1 = ffi.new('uint8_t[]', h.hydro_kx_XX_PACKET1BYTES)
+    if (h.hydro_kx_xx_1(st_client, pkt1, psk) != 0):
+        return None
+    return bytes(pkt1)
 
-def hydro_kx_xx_2():
-    pass
+def hydro_kx_xx_2(st_server, pkt1, server_kp, psk=None):
+    if psk is None:
+        psk = ffi.NULL
+    pkt2 = ffi.new('uint8_t[]', h.hydro_kx_XX_PACKET2BYTES)
+    if (h.hydro_kx_xx_2(st_server, pkt2, pkt1, psk, server_kp) != 0):
+        return None
+    return bytes(pkt2)
 
-def hydro_kx_xx_3():
-    pass
+def hydro_kx_xx_3(st_client, pkt2, client_kp, psk=None):
+    pkt3 = ffi.new('uint8_t[]', h.hydro_kx_XX_PACKET3BYTES)
+    # NOTE: peer_pk_server may optionally be set to NULL
+    # It is where the client may learn of the servers pubkey
+    peer_pk_server = ffi.new('uint8_t[]', h.hydro_kx_PUBLICKEYBYTES)
+    session_kp_client = ffi.new('hydro_kx_session_keypair *')
+    if psk is None:
+        psk = ffi.NULL
+    if (h.hydro_kx_xx_3(st_client, session_kp_client, pkt3, peer_pk_server, pkt2, psk, client_kp) != 0):
+        return (None, None, None)
+    return (session_kp_client, bytes(pkt3), bytes(peer_pk_server))
 
-def hydro_kx_xx_3():
-    pass
+def hydro_kx_xx_4(st_server, pkt3, psk=None):
+    # NOTE: peer_pk_client may optionally be set to NULL
+    # It is where the server may learn of the clients pubkey
+    peer_pk_client = ffi.new('uint8_t[]', h.hydro_kx_PUBLICKEYBYTES)
+    session_kp_server = ffi.new('hydro_kx_session_keypair *')
+    if psk is None:
+        psk = ffi.NULL
+    if (h.hydro_kx_xx_4(st_server, session_kp_server, peer_pk_client, pkt3, psk) != 0):
+        return (None, None)
+    return (session_kp_server, bytes(peer_pk_client))
 
-def hydro_kx_xx_4():
-    pass
+class hydro_kx_xx_client(object):
+    """wrapper class for client for xx-type kx"""
+    def __init__(self, psk=None):
+        self.psk = psk
+        self.st = ffi.new('hydro_kx_state *')
+
+    def xx_1(self):
+        return hydro_kx_xx_1(self.st, self.psk)
+
+    def xx_3(self, pkt2, client_kp):
+        return hydro_kx_xx_3(self.st, pkt2, client_kp, self.psk)
+
+class hydro_kx_xx_server(object):
+    """wrapper class for server for xx-type kx"""
+    def __init__(self, psk=None):
+        self.psk = psk
+        self.st = ffi.new('hydro_kx_state *')
+
+    def xx_2(self, pkt1, server_kp):
+        return hydro_kx_xx_2(self.st, pkt1, server_kp, self.psk)
+
+    def xx_4(self, pkt3):
+        return hydro_kx_xx_4(self.st, pkt3, self.psk)
 
 ################################################################################
 # pwhash
@@ -396,6 +511,7 @@ def hydro_equal(obj1, obj2, cmplen=0):
     """if len=0/not provided, assume obj comparison for equal len"""
     obj1len = len(obj1)
     obj2len = len(obj2)
+    # print('len 1/2 = %d/%d' % (obj1len, obj2len))
     if not cmplen:
         if obj1len != obj2len:
             return False

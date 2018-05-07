@@ -178,9 +178,115 @@ def test_sign_readme():
     assert s2.final_verify(sig, kp.pk) == True
 
 ################################################################################
-# kx - TODO
+# kx
 ################################################################################
+def test_kx_n():
+    print('\ntest_kx_n')
+    print('Server: Generate pubkey')
+    kp = hydro_kx_keygen()
 
+    print('Client: Generate session kp + initial packet, using server pubkey')
+    session_kp_client, pkt1 = hydro_kx_n_1(kp.pk)
+    assert session_kp_client != None
+    assert pkt1 != None
+    # dump_session_keypair_hex(session_kp_client)
+    print('pkt1 hex:', pkt1.hex())
+
+    # pkt1 across medium from client --> server
+
+    print('Server: Use sk/pk + pkt1 to obtain session_kp')
+    session_kp_server = hydro_kx_n_2(kp, pkt1)
+    assert session_kp_server != None
+    # dump_session_keypair_hex(session_kp_server)
+
+    assert (hydro_equal(session_kp_client.tx, session_kp_server.rx) == True)
+    assert (hydro_equal(session_kp_client.rx, session_kp_server.tx) == True)
+    print('\ntest_kx_n finished successfully')
+    return
+
+def test_kx_kk():
+    print('\ntest_kx_kk')
+    print('Client: Generate pubkey')
+    client_kp = hydro_kx_keygen()
+    print('Server: Generate pubkey')
+    server_kp = hydro_kx_keygen()
+
+    kk_client = hydro_kx_kk_client()
+    pkt1 = kk_client.kk_1(server_kp.pk, client_kp)
+    assert pkt1 != None
+    print('pkt1 hex:', pkt1.hex())
+
+    # pkt1 across medium from client --> server
+
+    print('Server: process pkt1, generate kp + pkt2')
+    session_kp_server, pkt2 = hydro_kx_kk_2(pkt1, client_kp.pk, server_kp)
+    assert session_kp_server != None
+    assert pkt2 != None
+    print('pkt2 hex:', pkt2.hex())
+    # dump_session_keypair_hex(session_kp_server)
+
+    # pkt2 across medium from server --> client
+
+    print('Client: process pkt2, generate session keys')
+    session_kp_client = kk_client.kk_3(pkt2, server_kp.pk)
+    # dump_session_keypair_hex(session_kp_client)
+    assert session_kp_client != None
+
+    assert (hydro_equal(session_kp_client.tx, session_kp_server.rx) == True)
+    assert (hydro_equal(session_kp_client.rx, session_kp_server.tx) == True)
+    print('\ntest_kx_kk finished successfully')
+    return
+
+def test_kx_xx():
+    print('\ntest_kx_xx')
+    client_kp = hydro_kx_keygen()
+    server_kp = hydro_kx_keygen()
+    print('Client: pubkey = ', bytes(client_kp.pk).hex() )
+    print('Server: pubkey = ', bytes(server_kp.pk).hex() )
+
+    xx_client = hydro_kx_xx_client()
+    xx_server = hydro_kx_xx_server()
+
+    pkt1 = xx_client.xx_1()
+    assert pkt1 != None
+    print('pkt1 hex:', pkt1.hex())
+    #
+    # pkt1 across medium from client --> server
+    #
+    pkt2 = xx_server.xx_2(pkt1, server_kp)
+    assert pkt2 != None
+    print('pkt2 hex:', pkt2.hex())
+    #
+    # pkt2 across medium from server --> client
+    #
+    (session_kp_client, pkt3, peer_pk_server) =  xx_client.xx_3(pkt2, client_kp)
+    assert session_kp_client != None
+    assert pkt3 != None
+    print('pkt3 hex:', pkt3.hex())
+    print('Discovered a (server) peer:', peer_pk_server.hex())
+    assert (hydro_equal(bytes(server_kp.pk), peer_pk_server) == True)
+    # dump_session_keypair_hex(session_kp_client)
+    #
+    # pkt3 across medium from client --> server
+    #
+    (session_kp_server, peer_pk_client) =  xx_server.xx_4(pkt3)
+    assert session_kp_server != None
+    print('Discovered a (client) peer:', peer_pk_client.hex())
+    assert (hydro_equal(bytes(client_kp.pk), peer_pk_client) == True)
+    # dump_session_keypair_hex(session_kp_server)
+    #
+    # Done!
+    #
+    assert (hydro_equal(session_kp_client.tx, session_kp_server.rx) == True)
+    assert (hydro_equal(session_kp_client.rx, session_kp_server.tx) == True)
+    print('\ntest_kx_xx finished successfully')
+    return
+
+def test_kx():
+    print('\ntest_kx (all)')
+    test_kx_n()
+    test_kx_kk()
+    test_kx_xx()
 
 ################################################################################
 # pwhash
@@ -271,28 +377,27 @@ def main():
     # wrapper
     print( hydro_version() )
     print( pyhy_version() )
-    # rand
+    ### helpers ###
+    test_helpers()
+    ### pwhash ###
+    test_pwhash()
+    ### rand ###
     test_rand()
-    # hash
+    ### hash ###
     test_hash()
-    # kdf
+    ### kdf ###
     test_kdf()
-    # secretbox
+    ### secretbox ###
     test_secretbox()
     test_secretbox_probes()
-    # sign
+    ### sign ###
     test_signature_pass()
     test_signature_fail()
     test_sign_readme()
     test_other()
     test_hexify()
-    # kx - n
-    # kx - kk
-    # kx - xx
-    # pwhash
-    test_pwhash()
-    # helpers
-    test_helpers()
+    ### kx ###
+    test_kx()
     return
 
 
