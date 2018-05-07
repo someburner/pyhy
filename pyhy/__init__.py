@@ -70,7 +70,7 @@ __all__ = [
 ]
 
 h.hydro_init()
-__version__ =  '0.0.4'
+__version__ =  '0.0.5'
 
 ################################################################################
 # Internal utilities
@@ -165,8 +165,8 @@ class hydro_hash(object):
     """wrapper class for hash creation, verification"""
     def __init__(self, ctx, key):
         """Creates a hydro_hash_state object with ctx and key (both required)"""
-        assert (type(ctx) == str) and (len(ctx) == 8)
-        assert len(key) == hydro_hash_KEYBYTES
+        assert (type(ctx) == str) and (len(ctx) == h.hydro_kdf_CONTEXTBYTES)
+        assert len(key) == h.hydro_hash_KEYBYTES
         self.st = ffi.new('struct hydro_hash_state *')
         h.hydro_hash_init(self.st, ctx.encode('utf8'), key)
 
@@ -185,8 +185,8 @@ class hydro_hash(object):
 # hydro_hash_hash(uint8_t *out, size_t out_len, const void *in_,
 # size_t in_len, const char ctx[hydro_hash_CONTEXTBYTES], const uint8_t *key);
 def hydro_hash_hash(outlen, d, ctx, key=None):
-    assert (type(ctx) == str) and (len(ctx) == 8)
-    assert (outlen >= h.hydro_hash_BYTES_MIN) and (outlen <= hydro_hash_BYTES_MAX)
+    assert (type(ctx) == str) and (len(ctx) == h.hydro_kdf_CONTEXTBYTES)
+    assert (outlen >= h.hydro_hash_BYTES_MIN) and (outlen <= h.hydro_hash_BYTES_MAX)
     dlen = len(d)
     buf = ffi.new('uint8_t[]', outlen)
     if key is None:
@@ -210,8 +210,8 @@ def hydro_kdf_master_keygen():
     return bytes(buf)
 
 def hydro_kdf_derive_from_key(subkey_len, id, ctx, master_key):
-    assert ((subkey_len >= 16) and (subkey_len <= 65535))
-    assert (type(ctx) == str) and (len(ctx) == 8)
+    assert ((subkey_len >= h.hydro_kdf_BYTES_MIN) and (subkey_len <= h.hydro_kdf_BYTES_MAX))
+    assert (type(ctx) == str) and (len(ctx) == h.hydro_kdf_CONTEXTBYTES)
     buf = ffi.new('uint8_t[]', subkey_len)
     h.hydro_kdf_derive_from_key(buf, subkey_len, id, ctx.encode('utf8'), master_key)
     return bytes(buf)
@@ -231,14 +231,14 @@ def hydro_secretbox_keygen():
     return bytes(buf)
 
 def hydro_secretbox_encrypt(m, mid, ctx, key):
-    assert (type(ctx) == str) and (len(ctx) == 8)
+    assert (type(ctx) == str) and (len(ctx) == h.hydro_kdf_CONTEXTBYTES)
     mlen = len(m)
     buf = ffi.new('uint8_t[]', mlen + h.hydro_secretbox_HEADERBYTES)
     h.hydro_secretbox_encrypt(buf, m.encode('utf8'), mlen, mid, ctx.encode('utf8'), key)
     return bytes(buf)
 
 def hydro_secretbox_decrypt(c, mid, ctx, key):
-    assert (type(ctx) == str) and (len(ctx) == 8)
+    assert (type(ctx) == str) and (len(ctx) == h.hydro_kdf_CONTEXTBYTES)
     clen = len(c)
     buf = ffi.new('uint8_t[]', clen - h.hydro_secretbox_HEADERBYTES)
     if h.hydro_secretbox_decrypt(buf, c, clen, mid, ctx.encode('utf8'), key) != 0:
@@ -246,7 +246,7 @@ def hydro_secretbox_decrypt(c, mid, ctx, key):
     return bytes(buf)
 
 def hydro_secretbox_probe_create(c, ctx, key):
-    assert (type(ctx) == str) and (len(ctx) == 8)
+    assert (type(ctx) == str) and (len(ctx) == h.hydro_kdf_CONTEXTBYTES)
     clen = len(c)
     buf = ffi.new('uint8_t[]', h.hydro_secretbox_PROBEBYTES)
     h.hydro_secretbox_probe_create(buf, c, clen, ctx.encode('utf8'), key)
@@ -254,7 +254,7 @@ def hydro_secretbox_probe_create(c, ctx, key):
 
 # NOTE/TODO: appears probe verif is not that strict about clen
 def hydro_secretbox_probe_verify(p, c, ctx, key):
-    assert (type(ctx) == str) and (len(ctx) == 8)
+    assert (type(ctx) == str) and (len(ctx) == h.hydro_kdf_CONTEXTBYTES)
     clen = len(c)
     if (h.hydro_secretbox_probe_verify(p, c, clen, ctx.encode('utf8'), key) == 0):
         return True
@@ -284,7 +284,7 @@ class hydro_sign(object):
     """wrapper class for signature creation, verification"""
     def __init__(self, ctx):
         """Creates a hydro_sign_state object with (required) ctx"""
-        assert (type(ctx) == str) and (len(ctx) == 8)
+        assert (type(ctx) == str) and (len(ctx) == h.hydro_kdf_CONTEXTBYTES)
         self.st = ffi.new('hydro_sign_state *')
         h.hydro_sign_init(self.st, ctx.encode('utf8'))
 
@@ -337,7 +337,8 @@ def hydro_kx_keygen_deterministic(seed):
     h.hydro_kx_keygen_deterministic(pair, seed)
     return pair
 
-# ----------  N  ---------- #
+
+# ------------------------------------ N ------------------------------------- #
 __all__ += [ 'hydro_kx_N_PACKET1BYTES' ]
 hydro_kx_N_PACKET1BYTES = h.hydro_kx_N_PACKET1BYTES
 
@@ -358,8 +359,10 @@ def hydro_kx_n_2(kp, pkt1, psk=None):
     if (h.hydro_kx_n_2(session_kp_server, pkt1, psk, kp) != 0):
         return None
     return session_kp_server
+# ---------------------------------------------------------------------------- #
 
-# ---------- KK ----------- #
+
+# ------------------------------------ KK ------------------------------------ #
 __all__ += [ 'hydro_kx_KK_PACKET1BYTES', 'hydro_kx_KK_PACKET2BYTES' ]
 hydro_kx_KK_PACKET1BYTES = h.hydro_kx_KK_PACKET1BYTES
 hydro_kx_KK_PACKET2BYTES = h.hydro_kx_KK_PACKET2BYTES
@@ -383,6 +386,7 @@ def hydro_kx_kk_3(st_client, pkt2, server_pubkey):
         return None
     return session_kp_client
 
+# ------------------------------- KK (helpers) ------------------------------- #
 class hydro_kx_kk_client(object):
     """wrapper class for client for kk-type kx"""
     def __init__(self):
@@ -393,8 +397,10 @@ class hydro_kx_kk_client(object):
 
     def kk_3(self, pkt2, server_pubkey):
         return hydro_kx_kk_3(self.st, pkt2, server_pubkey)
+# ---------------------------------------------------------------------------- #
 
-# ---------- XX ----------- #
+
+# ------------------------------------ XX ------------------------------------ #
 __all__ += [ 'hydro_kx_XX_PACKET1BYTES', 'hydro_kx_XX_PACKET2BYTES', 'hydro_kx_XX_PACKET3BYTES' ]
 hydro_kx_XX_PACKET1BYTES = h.hydro_kx_XX_PACKET1BYTES
 hydro_kx_XX_PACKET2BYTES = h.hydro_kx_XX_PACKET2BYTES
@@ -440,6 +446,7 @@ def hydro_kx_xx_4(st_server, pkt3, psk=None):
         return (None, None)
     return (session_kp_server, bytes(peer_pk_client))
 
+# ------------------------------- XX (helpers) ------------------------------- #
 class hydro_kx_xx_client(object):
     """wrapper class for client for xx-type kx"""
     def __init__(self, psk=None):
@@ -463,6 +470,8 @@ class hydro_kx_xx_server(object):
 
     def xx_4(self, pkt3):
         return hydro_kx_xx_4(self.st, pkt3, self.psk)
+# ---------------------------------------------------------------------------- #
+
 
 ################################################################################
 # pwhash

@@ -55,7 +55,7 @@ def test_hash():
     h2.update('some data')
     h2.update('more data')
     h2hash = h2.final()
-    assert h1hash == h2hash
+    assert (hydro_equal(h1hash, h2hash) == True)
     print('h1hash == h2hash')
 
 
@@ -65,29 +65,30 @@ def test_hash():
 def test_kdf():
     print('\ntest_kdf')
     master_key = hydro_kdf_master_keygen()
-    assert len(master_key) == 32
+    assert len(master_key) == hydro_kdf_KEYBYTES
     bad_master_key = hydro_kdf_master_keygen()
     # print('Master key:', master_key.hex())
     subkey1 = hydro_kdf_derive_from_key(16, 0, TEST_CTX, master_key)
     assert len(subkey1) == 16
     subkey2 = hydro_kdf_derive_from_key(16, 0, TEST_CTX, master_key)
-    assert subkey1 == subkey2
+    assert (hydro_equal(subkey1, subkey2) == True)
     subkey2 = hydro_kdf_derive_from_key(16, 0, FAIL_CTX, master_key)
-    assert subkey1 != subkey2
+    assert (hydro_equal(subkey1, subkey2) == False)
     subkey2 = hydro_kdf_derive_from_key(16, 1, TEST_CTX, master_key)
-    assert subkey1 != subkey2
+    assert (hydro_equal(subkey1, subkey2) == False)
     subkey2 = hydro_kdf_derive_from_key(16, 0, TEST_CTX, bad_master_key)
-    assert subkey1 != subkey2
+    assert (hydro_equal(subkey1, subkey2) == False)
     subkey2 = hydro_kdf_derive_from_key(32, 0, TEST_CTX, master_key)
-    assert subkey1 != subkey2
+    assert (hydro_equal(subkey1, subkey2) == False)
     assert len(subkey2) == 32
     bunch_of_subkeys = []
     for i in range(0, 1024):
         subkey_n = hydro_kdf_derive_from_key(16, i, TEST_CTX, master_key)
-        assert subkey_n not in bunch_of_subkeys
+        for k in bunch_of_subkeys:
+            assert (hydro_equal(k, subkey_n) == False)
         bunch_of_subkeys.append(subkey_n)
     subkey1_again = hydro_kdf_derive_from_key(16, 0, TEST_CTX, master_key)
-    assert subkey1 == subkey1_again
+    assert (hydro_equal(subkey1, subkey1_again) == True)
     return
 
 ################################################################################
@@ -300,7 +301,9 @@ def test_pwhash():
     # print('pwhash master_key:', master_key.hex() )
     pwkey = hydro_pwhash_deterministic(TEST_PW, TEST_PW_CTX, master_key)
     print('pwhash for %s: %s' % (TEST_PW, pwkey.hex()))
-    assert pwkey == hydro_pwhash_deterministic(TEST_PW, TEST_PW_CTX, master_key)
+    test_pwkey = hydro_pwhash_deterministic(TEST_PW, TEST_PW_CTX, master_key)
+    assert (hydro_equal(pwkey, test_pwkey) == True)
+    return
 
 ################################################################################
 # other

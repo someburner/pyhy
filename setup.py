@@ -2,7 +2,7 @@
 from setuptools import find_packages, setup
 
 NAME = 'pyhy'
-VERS = '0.0.4'
+VERS = '0.0.5'
 PACKAGES = [ 'pyhy' ]
 SHORT_DESC = 'bindings for libhydrogen using cffi'
 LONG_DESC = """Python bindings for libhydrogen, a small cryptographic library
@@ -11,7 +11,7 @@ suited for embedded systems requiring a low footprint. Uses cffi.
 KEYWORDS = [ 'cryptography', 'crypto', 'embedded', 'encryption', 'libhydrogen', 'hydrogen' ]
 # http://pypi.python.org/pypi?%3Aaction=list_classifiers
 CLASSIFIERS = [
-    'Development Status :: 2 - Pre-Alpha',
+    'Development Status :: 3 - Alpha',
     'License :: OSI Approved :: ISC License (ISCL)',
     'Intended Audience :: Developers',
     'Programming Language :: Python :: 3.4',
