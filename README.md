@@ -1,97 +1,46 @@
 # pyhy
 
-Python bindings for [libhydrogen](https://github.com/jedisct1/libhydrogen). WIP.
+Python bindings for [libhydrogen](https://github.com/jedisct1/libhydrogen).
 
-## Implementation
+## Install
 
-These are implemented mostly as dumb wrappers, and follow the same usage as in
-libhydrogen itself:
-
-* `kdf`
-* `secretbox`
-* `helpers`
-* `random`
-
-**Things are a bit different for..**:
-
-* `hydro_sign`
-* `hydro_hash`
-
-(See usage)
-
-## Usage
-
-Requires `libhydrogen` to be installed on system. Also, only tested so far on
-Ubuntu 18.04. Additional work may be required for others, PRs welcome.
+Requires `libhydrogen` to be installed on system. Testing/development has been
+done on linux, specifically Ubuntu 18.04. Additional work may be required for
+other platforms/distros.
 
 ```sh
 pip3 install pyhy
 ```
 
-For `hash`/`sign` (and, likely `kx` in the future) it made more sense to create
-python classes that hold the state. So instead it looks like:
+## Usage
 
-```py
-from pyhy import *
+The [wiki](https://github.com/someburner/pyhy/wiki) contains a few usage
+examples. Besides that, [tests.py](https://github.com/someburner/pyhy/blob/master/test.py)
+is fairly self-describing. Just copy that somewhere, run it, and hack away.
 
-YOUR_CTX = 'context1'
-kp = hydro_sign_keygen()
-s1 = hydro_sign(YOUR_CTX)
-s1.update('first chunk')
-s1.update('second chunk')
-sig = s1.final_create(kp.sk)
-print('Signature: ', sig.hex())
-
-s2 = hydro_sign(YOUR_CTX)
-s2.update('first chunk')
-s2.update('second chunk')
-assert s2.final_verify(sig, kp.pk) == True
-```
-
-**NOTE**: `final_create` will wipe the memory location of the passed in
-secret_key just after verification. According to `cffi`, the memory will be
-freed when it goes out of scope (which could be never), so it's on by default.
-But if you are signing tons of messages you can prevent that by doing:
-
-```py
-sig = s1.final_create(kp.sk, wipe=False)
-```
-
-It also seemed natural to use python for hex conversions. You can load or
-write in keys (for testing) like this:
-
-```py
-# ... hydro_sign, update, ....
-
-your_pk_hex = '7e36d864be0145ded2912ceb05c0e66257e8db78e5eb0dd880345c842e7e1d1b'
-success = s2.final_verify(sig, unhexify(your_pk_hex))
-```
-
-## Developing
-
-**TODO**:
-
-* rest of `pwhash`
-* `kx-N`
-* `kx-KK`
-* `kx-XX`
-
-**Other notes**:
+## Bindings
 
 This project uses cffi [docs](https://cffi.readthedocs.io/en/latest/)/[bitbucket](https://bitbucket.org/cffi/cffi/issues?status=new&status=open).
+If you experience low-level issues you may want to look there for help.
+
+**Ensuring latest version**:
+
+```sh
+pip3 uninstall pyhy
+pip3 install pyhy --no-cache
+```
+
+**To generate bindings yourself**:
 
 ```sh
 virtualenv env --python=$(which python3)
 source env/bin/activate
 pip3 install cffi
-pip3 uninstall pyhy
-pip3 install pyhy --no-cache
 
-git clone https://github.com/someburner/pyhy.git
+git clone https://github.com/someburner/pyhy
 cd pyhy
-pip3 install . --force-reinstall
-# or from another location
-pip3 install ../pyhy
+./bind.py
+./test.py
 ```
 
 ## License
