@@ -2,7 +2,7 @@
 from setuptools import find_packages, setup
 
 NAME = 'pyhy'
-VERS = '0.0.5'
+VERS = '0.0.6'
 PACKAGES = [ 'pyhy' ]
 SHORT_DESC = 'bindings for libhydrogen using cffi'
 LONG_DESC = """Python bindings for libhydrogen, a small cryptographic library

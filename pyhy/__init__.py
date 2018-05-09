@@ -42,6 +42,7 @@ __all__ = [
     # kx
     'hydro_kx_keygen',
     'hydro_kx_keygen_deterministic',
+    'hydro_kx_keypair', 'hydro_kx_session_keypair',
     # kx - NOISE_N
     'hydro_kx_n_1',  'hydro_kx_n_2',
     # kx - NOISE_KK
@@ -70,7 +71,7 @@ __all__ = [
 ]
 
 h.hydro_init()
-__version__ =  '0.0.5'
+__version__ =  '0.0.6'
 
 ################################################################################
 # Internal utilities
@@ -233,6 +234,8 @@ def hydro_secretbox_keygen():
 def hydro_secretbox_encrypt(m, mid, ctx, key):
     assert (type(ctx) == str) and (len(ctx) == h.hydro_kdf_CONTEXTBYTES)
     mlen = len(m)
+    if not mlen:
+        return bytes(0)
     buf = ffi.new('uint8_t[]', mlen + h.hydro_secretbox_HEADERBYTES)
     h.hydro_secretbox_encrypt(buf, m.encode('utf8'), mlen, mid, ctx.encode('utf8'), key)
     return bytes(buf)
@@ -240,6 +243,8 @@ def hydro_secretbox_encrypt(m, mid, ctx, key):
 def hydro_secretbox_decrypt(c, mid, ctx, key):
     assert (type(ctx) == str) and (len(ctx) == h.hydro_kdf_CONTEXTBYTES)
     clen = len(c)
+    if clen <= h.hydro_secretbox_HEADERBYTES:
+        return None
     buf = ffi.new('uint8_t[]', clen - h.hydro_secretbox_HEADERBYTES)
     if h.hydro_secretbox_decrypt(buf, c, clen, mid, ctx.encode('utf8'), key) != 0:
         return None
@@ -337,6 +342,27 @@ def hydro_kx_keygen_deterministic(seed):
     h.hydro_kx_keygen_deterministic(pair, seed)
     return pair
 
+# Create a hydro_kx_keypair from pk/sk bytes
+# uint8_t pk[hydro_kx_PUBLICKEYBYTES];
+# uint8_t sk[hydro_kx_SECRETKEYBYTES];
+def hydro_kx_keypair(pk_bytes, sk_bytes):
+    assert len(pk_bytes) == h.hydro_kx_PUBLICKEYBYTES
+    assert len(sk_bytes) == h.hydro_kx_SECRETKEYBYTES
+    pair = ffi.new('hydro_kx_keypair *')
+    ffi.memmove(pair.pk, pk_bytes, h.hydro_kx_PUBLICKEYBYTES)
+    ffi.memmove(pair.sk, sk_bytes, h.hydro_kx_SECRETKEYBYTES)
+    return pair
+
+# Create a hydro_kx_session_keypair from tx/rx bytes
+# uint8_t tx[hydro_kx_SESSIONKEYBYTES];
+# uint8_t rx[hydro_kx_SESSIONKEYBYTES];
+def hydro_kx_session_keypair(tx_bytes, rx_bytes):
+    assert len(tx_bytes) == h.hydro_kx_SESSIONKEYBYTES
+    assert len(rx_bytes) == h.hydro_kx_SESSIONKEYBYTES
+    session_pair = ffi.new('hydro_kx_session_keypair *')
+    ffi.memmove(session_pair.tx, tx_bytes, h.hydro_kx_SESSIONKEYBYTES)
+    ffi.memmove(session_pair.rx, rx_bytes, h.hydro_kx_SESSIONKEYBYTES)
+    return session_pair
 
 # ------------------------------------ N ------------------------------------- #
 __all__ += [ 'hydro_kx_N_PACKET1BYTES' ]

@@ -14,9 +14,12 @@ pip3 install pyhy
 
 ## Usage
 
-The [wiki](https://github.com/someburner/pyhy/wiki) contains a few usage
-examples. Besides that, [tests.py](https://github.com/someburner/pyhy/blob/master/test.py)
-is fairly self-describing. Just copy that somewhere, run it, and hack away.
+* An end-to-end example for `kx` is provided using [paho-mqtt](https://github.com/eclipse/paho.mqtt.python).
+See [demo](demo) for instructions. Currently n-type only.
+* The [wiki](https://github.com/someburner/pyhy/wiki) contains a few usage
+examples.
+* [tests.py](https://github.com/someburner/pyhy/blob/master/test.py) is fairly
+self-describing. Just copy that somewhere, run it, and hack away.
 
 ## Bindings
 

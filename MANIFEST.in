@@ -1,2 +1,3 @@
 include *.h
 recursive-include *.h *.py
+prune demo

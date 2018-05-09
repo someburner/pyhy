@@ -181,6 +181,34 @@ def test_sign_readme():
 ################################################################################
 # kx
 ################################################################################
+def test_kx_keypairs():
+    print('\ntest_kx_keypairs')
+    kp = hydro_kx_keygen()
+    pk_hex, sk_hex = bytes(kp.pk).hex(), bytes(kp.sk).hex()
+    print('Serialized')
+    print('pk_hex:', pk_hex)
+    print('sk_hex:', sk_hex)
+    newkp = hydro_kx_keypair(pk_bytes=unhexify(pk_hex), sk_bytes=unhexify(sk_hex))
+    assert (hydro_equal(kp.pk, newkp.pk) == True)
+    assert (hydro_equal(kp.sk, newkp.sk) == True)
+    print('De-serialized')
+    print('(new) pk_hex:', bytes(newkp.pk).hex())
+    print('(new) sk_hex:', bytes(newkp.sk).hex())
+
+    print('\nhydro_kx_session_keypair')
+    skp, pkt1 = hydro_kx_n_1(kp.pk)
+    assert pkt1 != None
+    tx_hex, rx_hex = bytes(skp.tx).hex(), bytes(skp.rx).hex()
+    print('Serialized')
+    print('tx_hex:', tx_hex)
+    print('rx_hex:', rx_hex)
+    newskp = hydro_kx_session_keypair(tx_bytes=unhexify(tx_hex), rx_bytes=unhexify(rx_hex))
+    assert (hydro_equal(skp.tx, newskp.tx) == True)
+    assert (hydro_equal(skp.rx, newskp.rx) == True)
+    print('(new) tx_hex:', bytes(newskp.tx).hex())
+    print('(new) rx_hex:', bytes(newskp.rx).hex())
+    return
+
 def test_kx_n():
     print('\ntest_kx_n')
     print('Server: Generate pubkey')
@@ -285,6 +313,7 @@ def test_kx_xx():
 
 def test_kx():
     print('\ntest_kx (all)')
+    test_kx_keypairs()
     test_kx_n()
     test_kx_kk()
     test_kx_xx()
