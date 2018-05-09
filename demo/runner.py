@@ -120,12 +120,15 @@ def on_msg_client(client, userdata, msg):
                 (session_kp_client, pkt3, peer_pk_server) =  xx_client.xx_3(pkt2, client_kp)
                 assert session_kp_client is not None
                 assert pkt3 is not None
-                assert peer_pk_server is not None
-                print('Discovered a (server) peer: %s' % peer_pk_server.hex())
-                userdata['state'] = 3
+                if peer_pk_server is not None:
+                    print('Discovered a (server) peer: %s' % peer_pk_server.hex())
+                userdata['state'] = 0
+                userdata['session_kp'] = session_kp_client
+                userdata['established'] = True
                 client.publish(CLIENT_PUB_TOPIC, pkt3)
-            elif userdata['state'] == 3:
-                pass
+                print('Client (xx) pkt3 sent, connection set to established')
+            elif userdata['state'] == 0:
+                print('TODO: restart connection')
             else:
                 print('Client state invalid')
         ########################################################
@@ -179,7 +182,16 @@ def on_msg_server(client, userdata, msg):
                 publish.single(SERVER_PUB_TOPIC, pkt2, hostname=MQTT_HOST)
                 print('Server (xx) pkt2 sent')
             elif userdata['state'] == 2:
-                print('Server (xx) pkt3 rx')
+                pkt3 = msg.payload
+                xx_server = userdata['kx'] # kx client created on init
+                (session_kp_server, peer_pk_client) =  xx_server.xx_4(pkt3)
+                assert session_kp_server is not None
+                userdata['session_kp'] = session_kp_server
+                userdata['state'] = 0
+                userdata['established'] = True
+                if peer_pk_client is not None:
+                    print('Discovered a (client) peer: %s' % peer_pk_client.hex())
+                print('Server (xx) - Established')
         else:
             print('missing/invalid type in userdata')
             sys.exit(1)
@@ -242,8 +254,14 @@ if __name__ == '__main__':
                 kphex['sk'] = db['kk-server']['sk']
                 kphex['client-pk'] = db['kk-client']['pk']
         elif kxType == 'xx':
-            kphex['pk'] = db['xx-client']['pk']
-            kphex['sk'] = db['xx-client']['sk']
+            if mode == 'client':
+                kphex['pk'] = db['xx-client']['pk']
+                kphex['sk'] = db['xx-client']['sk']
+                kphex['server-pk'] = db['xx-server']['pk']
+            else:
+                kphex['pk'] = db['xx-server']['pk']
+                kphex['sk'] = db['xx-server']['sk']
+                kphex['client-pk'] = db['xx-client']['pk']
         else:
             print('Maybe corrupted keys.db')
             kphex = None
@@ -252,6 +270,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     print('Loaded keypair for kx (type %s)' % kxType)
+    print('(%s) Public key: %s' % (mode, kphex['pk']))
     _userdata = {
         'kp': kphex,
         'type': kxType,
