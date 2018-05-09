@@ -40,6 +40,12 @@ def init_topics(uuid):
     SERVER_PUB_TOPIC = CHAN_TO_CLIENT % uuid
     SERVER_SUB_TOPIC = CHAN_TO_SERVER % uuid
 
+def get_current_kp(userdata):
+    return pyhy.hydro_kx_keypair(
+            pk_bytes=pyhy.unhexify(userdata['kp']['pk']),
+            sk_bytes=pyhy.unhexify(userdata['kp']['sk'])
+    )
+
 def on_sub_client(client, userdata, mid, granted_qos):
     print("Subscribed with qos %s, client id assigned = %s" % (str(granted_qos), str(client._client_id)))
 
@@ -55,16 +61,13 @@ def on_connect_client(client, userdata, flags, rc):
         server_pubkey = pyhy.unhexify(userdata['kp']['pk'])
         session_kp_client, pkt1 = pyhy.hydro_kx_n_1(server_pubkey)
         userdata['session_kp'] = session_kp_client
-        pyhy.dump_session_keypair_hex(session_kp_client)
+        # pyhy.dump_session_keypair_hex(session_kp_client)
         publish.single(CLIENT_PUB_TOPIC, pkt1, hostname=MQTT_HOST)
         userdata['established'] = True
     #################################### KK ####################################
     elif userdata['type'] == 'kk':
         print('Client (kk): Generate pkt1 using server pubkey')
-        client_kp = pyhy.hydro_kx_keypair(
-                pk_bytes=pyhy.unhexify(userdata['kp']['pk']),
-                sk_bytes=pyhy.unhexify(userdata['kp']['sk'])
-        )
+        client_kp = get_current_kp(userdata)
         server_pubkey = pyhy.unhexify(userdata['kp']['server-pk'])
         kk_client = userdata['kx'] # kx client created on init
         pkt1 = kk_client.kk_1(server_pubkey, client_kp)
@@ -112,10 +115,7 @@ def on_msg_client(client, userdata, msg):
         elif userdata['type'] == 'xx':
             if userdata['state'] == 1:
                 pkt2 = msg.payload
-                client_kp = pyhy.hydro_kx_keypair(
-                        pk_bytes=pyhy.unhexify(userdata['kp']['pk']),
-                        sk_bytes=pyhy.unhexify(userdata['kp']['sk'])
-                )
+                client_kp = get_current_kp(userdata)
                 xx_client = userdata['kx'] # kx client created on init
                 (session_kp_client, pkt3, peer_pk_server) =  xx_client.xx_3(pkt2, client_kp)
                 assert session_kp_client is not None
@@ -149,21 +149,15 @@ def on_msg_server(client, userdata, msg):
         ################################## N ###################################
         if userdata['type'] == 'n':
             pkt1 = msg.payload
-            kp = pyhy.hydro_kx_keypair(
-                    pk_bytes=pyhy.unhexify(userdata['kp']['pk']),
-                    sk_bytes=pyhy.unhexify(userdata['kp']['sk'])
-            )
-            session_kp_server = pyhy.hydro_kx_n_2(kp, pkt1)
-            pyhy.dump_session_keypair_hex(session_kp_server)
+            server_kp = get_current_kp(userdata)
+            session_kp_server = pyhy.hydro_kx_n_2(server_kp, pkt1)
+            # pyhy.dump_session_keypair_hex(session_kp_server)
             userdata['session_kp'] = session_kp_server
             userdata['established'] = True
         ################################## KK ##################################
         elif userdata['type'] == 'kk':
             pkt1 = msg.payload
-            server_kp = pyhy.hydro_kx_keypair(
-                    pk_bytes=pyhy.unhexify(userdata['kp']['pk']),
-                    sk_bytes=pyhy.unhexify(userdata['kp']['sk'])
-            )
+            server_kp = get_current_kp(userdata)
             session_kp_server, pkt2 = pyhy.hydro_kx_kk_2(pkt1, pyhy.unhexify(userdata['kp']['client-pk']), server_kp)
             userdata['session_kp'] = session_kp_server
             userdata['established'] = True
@@ -173,10 +167,7 @@ def on_msg_server(client, userdata, msg):
             if userdata['state'] == 0:
                 pkt1 = msg.payload
                 xx_server = userdata['kx'] # kx client created on init
-                server_kp = pyhy.hydro_kx_keypair(
-                        pk_bytes=pyhy.unhexify(userdata['kp']['pk']),
-                        sk_bytes=pyhy.unhexify(userdata['kp']['sk'])
-                )
+                server_kp = get_current_kp(userdata)
                 pkt2 = xx_server.xx_2(pkt1, server_kp)
                 userdata['state'] = 2
                 publish.single(SERVER_PUB_TOPIC, pkt2, hostname=MQTT_HOST)
