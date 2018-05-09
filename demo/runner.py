@@ -74,7 +74,12 @@ def on_connect_client(client, userdata, flags, rc):
         print('Client (kk) pkt1 sent')
     #################################### XX ####################################
     elif userdata['type'] == 'xx':
-        print('xx not impl')
+        print('Client (xx): Generate pkt1')
+        xx_client = userdata['kx'] # kx client created on init
+        pkt1 = xx_client.xx_1()
+        publish.single(CLIENT_PUB_TOPIC, pkt1, hostname=MQTT_HOST)
+        userdata['established'] = False
+        userdata['state'] = 1 # mark pkt1 sent
     else:
         print('missing/invalid type in userdata')
         sys.exit(1)
@@ -89,7 +94,11 @@ def on_msg_client(client, userdata, msg):
         ptxt = pyhy.hydro_secretbox_decrypt(msg.payload, 0, CTX, userdata['session_kp'].rx)
         print('Rx > %s' % ptxt.decode())
     else:
+        ################################## KK ##################################
         if userdata['type'] == 'kk':
+            if userdata['state'] != 1:
+                print('Client state must be 1 to process next pkt')
+                return
             pkt2 = msg.payload
             kk_client = userdata['kx'] # kx client created on init
             session_kp_client = kk_client.kk_3(pkt2, pyhy.unhexify(userdata['kp']['server-pk']))
@@ -99,6 +108,27 @@ def on_msg_client(client, userdata, msg):
                 print('Client (kk) session established')
             else:
                 print('WARN: Client (kk) session failed')
+        ################################## XX ##################################
+        elif userdata['type'] == 'xx':
+            if userdata['state'] == 1:
+                pkt2 = msg.payload
+                client_kp = pyhy.hydro_kx_keypair(
+                        pk_bytes=pyhy.unhexify(userdata['kp']['pk']),
+                        sk_bytes=pyhy.unhexify(userdata['kp']['sk'])
+                )
+                xx_client = userdata['kx'] # kx client created on init
+                (session_kp_client, pkt3, peer_pk_server) =  xx_client.xx_3(pkt2, client_kp)
+                assert session_kp_client is not None
+                assert pkt3 is not None
+                assert peer_pk_server is not None
+                print('Discovered a (server) peer: %s' % peer_pk_server.hex())
+                userdata['state'] = 3
+                client.publish(CLIENT_PUB_TOPIC, pkt3)
+            elif userdata['state'] == 3:
+                pass
+            else:
+                print('Client state invalid')
+        ########################################################
     return
 
 def on_msg_server(client, userdata, msg):
@@ -109,8 +139,11 @@ def on_msg_server(client, userdata, msg):
             print('Rx > %s' % ptxt.decode())
             ctxt = pyhy.hydro_secretbox_encrypt('You sent: "%s"' % ptxt.decode(), 0, CTX, userdata['session_kp'].tx)
             client.publish(SERVER_PUB_TOPIC, ctxt)
-            return
+        else:
+            userdata['established'] = False
+            userdata['state'] = 0
     else:
+        ################################## N ###################################
         if userdata['type'] == 'n':
             pkt1 = msg.payload
             kp = pyhy.hydro_kx_keypair(
@@ -121,6 +154,7 @@ def on_msg_server(client, userdata, msg):
             pyhy.dump_session_keypair_hex(session_kp_server)
             userdata['session_kp'] = session_kp_server
             userdata['established'] = True
+        ################################## KK ##################################
         elif userdata['type'] == 'kk':
             pkt1 = msg.payload
             server_kp = pyhy.hydro_kx_keypair(
@@ -131,8 +165,21 @@ def on_msg_server(client, userdata, msg):
             userdata['session_kp'] = session_kp_server
             userdata['established'] = True
             publish.single(SERVER_PUB_TOPIC, pkt2, hostname=MQTT_HOST)
+        ################################## XX ##################################
         elif userdata['type'] == 'xx':
-            print('xx not impl')
+            if userdata['state'] == 0:
+                pkt1 = msg.payload
+                xx_server = userdata['kx'] # kx client created on init
+                server_kp = pyhy.hydro_kx_keypair(
+                        pk_bytes=pyhy.unhexify(userdata['kp']['pk']),
+                        sk_bytes=pyhy.unhexify(userdata['kp']['sk'])
+                )
+                pkt2 = xx_server.xx_2(pkt1, server_kp)
+                userdata['state'] = 2
+                publish.single(SERVER_PUB_TOPIC, pkt2, hostname=MQTT_HOST)
+                print('Server (xx) pkt2 sent')
+            elif userdata['state'] == 2:
+                print('Server (xx) pkt3 rx')
         else:
             print('missing/invalid type in userdata')
             sys.exit(1)
