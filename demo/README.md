@@ -19,7 +19,25 @@ pip3 install paho-mqtt
 ./demo.sh client-n
 ```
 
+### kk
 
+```sh
+# Run server in one window
+./demo.sh server-kk
+
+# open a new shell and run client
+./demo.sh client-kk
+```
+
+### xx
+
+```sh
+# Run server in one window
+./demo.sh server-xx
+
+# open a new shell and run client
+./demo.sh client-xx
+```
 
 
 ### End

@@ -2,8 +2,14 @@
 ARGS=("$@"); ARGC=$#; _TOPDIR=$(dirname `realpath $0`);
 
 ARG_HELP_ARR=(
-	'server-n' 'Run NOISE_N server'
-	'client-n' 'Run NOISE_N client'
+	'server-n'  'Run NOISE_N server'
+	'client-n'  'Run NOISE_N client'
+	'---------' '-------------------'
+	'server-kk' 'Run NOISE_KK server'
+	'client-kk' 'Run NOISE_KK client'
+	'---------' '-------------------'
+	'server-xx' 'Run NOISE_XX server'
+	'client-xx' 'Run NOISE_XX client'
 );
 
 init_keys() {

@@ -49,6 +49,7 @@ def on_sub_server(client, userdata, mid, granted_qos):
 def on_connect_client(client, userdata, flags, rc):
     client.subscribe(CLIENT_SUB_TOPIC, 0)
     print('Connected (client)')
+    #################################### N #####################################
     if userdata['type'] == 'n':
         print('Client (n): Generate session kp + initial packet, using server pubkey')
         server_pubkey = pyhy.unhexify(userdata['kp']['pk'])
@@ -57,8 +58,21 @@ def on_connect_client(client, userdata, flags, rc):
         pyhy.dump_session_keypair_hex(session_kp_client)
         publish.single(CLIENT_PUB_TOPIC, pkt1, hostname=MQTT_HOST)
         userdata['established'] = True
+    #################################### KK ####################################
     elif userdata['type'] == 'kk':
-        print('kk not impl')
+        print('Client (kk): Generate pkt1 using server pubkey')
+        client_kp = pyhy.hydro_kx_keypair(
+                pk_bytes=pyhy.unhexify(userdata['kp']['pk']),
+                sk_bytes=pyhy.unhexify(userdata['kp']['sk'])
+        )
+        server_pubkey = pyhy.unhexify(userdata['kp']['server-pk'])
+        kk_client = userdata['kx'] # kx client created on init
+        pkt1 = kk_client.kk_1(server_pubkey, client_kp)
+        publish.single(CLIENT_PUB_TOPIC, pkt1, hostname=MQTT_HOST)
+        userdata['established'] = False
+        userdata['state'] = 1 # mark pkt1 sent
+        print('Client (kk) pkt1 sent')
+    #################################### XX ####################################
     elif userdata['type'] == 'xx':
         print('xx not impl')
     else:
@@ -66,6 +80,7 @@ def on_connect_client(client, userdata, flags, rc):
         sys.exit(1)
 
 def on_connect_server(client, userdata, flags, rc):
+    userdata['established'] = False
     client.subscribe(SERVER_SUB_TOPIC, 0)
     print('Connected (server)')
 
@@ -73,6 +88,18 @@ def on_msg_client(client, userdata, msg):
     if userdata['established'] == True:
         ptxt = pyhy.hydro_secretbox_decrypt(msg.payload, 0, CTX, userdata['session_kp'].rx)
         print('Rx > %s' % ptxt.decode())
+    else:
+        if userdata['type'] == 'kk':
+            pkt2 = msg.payload
+            kk_client = userdata['kx'] # kx client created on init
+            session_kp_client = kk_client.kk_3(pkt2, pyhy.unhexify(userdata['kp']['server-pk']))
+            if session_kp_client is not None:
+                userdata['session_kp'] = session_kp_client
+                userdata['established'] = True
+                print('Client (kk) session established')
+            else:
+                print('WARN: Client (kk) session failed')
+    return
 
 def on_msg_server(client, userdata, msg):
     print('on_msg_server')
@@ -95,7 +122,15 @@ def on_msg_server(client, userdata, msg):
             userdata['session_kp'] = session_kp_server
             userdata['established'] = True
         elif userdata['type'] == 'kk':
-            print('kk not impl')
+            pkt1 = msg.payload
+            server_kp = pyhy.hydro_kx_keypair(
+                    pk_bytes=pyhy.unhexify(userdata['kp']['pk']),
+                    sk_bytes=pyhy.unhexify(userdata['kp']['sk'])
+            )
+            session_kp_server, pkt2 = pyhy.hydro_kx_kk_2(pkt1, pyhy.unhexify(userdata['kp']['client-pk']), server_kp)
+            userdata['session_kp'] = session_kp_server
+            userdata['established'] = True
+            publish.single(SERVER_PUB_TOPIC, pkt2, hostname=MQTT_HOST)
         elif userdata['type'] == 'xx':
             print('xx not impl')
         else:
@@ -151,8 +186,14 @@ if __name__ == '__main__':
             kphex['pk'] = db['n']['pk']
             kphex['sk'] = db['n']['sk']
         elif kxType == 'kk':
-            kphex['pk'] = db['kk-client']['pk']
-            kphex['sk'] = db['kk-client']['sk']
+            if mode == 'client':
+                kphex['pk'] = db['kk-client']['pk']
+                kphex['sk'] = db['kk-client']['sk']
+                kphex['server-pk'] = db['kk-server']['pk']
+            else:
+                kphex['pk'] = db['kk-server']['pk']
+                kphex['sk'] = db['kk-server']['sk']
+                kphex['client-pk'] = db['kk-client']['pk']
         elif kxType == 'xx':
             kphex['pk'] = db['xx-client']['pk']
             kphex['sk'] = db['xx-client']['sk']
@@ -171,6 +212,16 @@ if __name__ == '__main__':
         'established': False,
         'session_kp': None
     }
+
+    if mode == 'client':
+        if kxType == 'kk':
+            _userdata['kx'] = pyhy.hydro_kx_kk_client()
+        elif kxType == 'xx':
+            _userdata['kx'] = pyhy.hydro_kx_xx_client()
+    else:
+        if kxType == 'xx':
+            _userdata['kx'] = pyhy.hydro_kx_xx_server()
+    ##################################################
 
     client = mqtt.Client(client_id=None, userdata=_userdata, clean_session=True)
     if MQTT_AUTH:
