@@ -71,7 +71,7 @@ __all__ = [
 ]
 
 h.hydro_init()
-__version__ =  '0.0.6'
+__version__ =  '0.0.7'
 
 ################################################################################
 # Internal utilities
@@ -406,9 +406,9 @@ def hydro_kx_kk_2(pkt1, client_pubkey, server_kp):
         return (None, None)
     return (session_kp_server, bytes(pkt2))
 
-def hydro_kx_kk_3(st_client, pkt2, server_pubkey):
+def hydro_kx_kk_3(st_client, pkt2, client_kp):
     session_kp_client = ffi.new('hydro_kx_session_keypair *')
-    if (h.hydro_kx_kk_3(st_client, session_kp_client, pkt2, server_pubkey) != 0):
+    if (h.hydro_kx_kk_3(st_client, session_kp_client, pkt2, client_kp) != 0):
         return None
     return session_kp_client
 

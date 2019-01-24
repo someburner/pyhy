@@ -4,9 +4,9 @@ Python bindings for [libhydrogen](https://github.com/jedisct1/libhydrogen).
 
 ## Install
 
-Requires `libhydrogen` to be installed on system. Testing/development has been
-done on linux, specifically Ubuntu 18.04. Additional work may be required for
-other platforms/distros.
+Requires [libhydrogen](https://github.com/jedisct1/libhydrogen) to be installed
+on system. Testing/development has been done on linux, specifically Ubuntu
+18.04. Additional work may be required for other platforms/distros.
 
 ```sh
 pip3 install pyhy
@@ -36,6 +36,8 @@ pip3 install pyhy --no-cache
 **To generate bindings yourself**:
 
 ```sh
+sudo apt-get install python3-dev
+
 virtualenv env --python=$(which python3)
 source env/bin/activate
 pip3 install cffi
@@ -45,6 +47,9 @@ cd pyhy
 ./bind.py
 ./test.py
 ```
+
+**NOTE**: For development you may need to compiled/install libhydrogen with
+`-fPIC` flag (add it to CFLAGS at the top of its Makefile).
 
 ## License
 

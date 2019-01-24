@@ -257,7 +257,7 @@ def test_kx_kk():
     # pkt2 across medium from server --> client
 
     print('Client: process pkt2, generate session keys')
-    session_kp_client = kk_client.kk_3(pkt2, server_kp.pk)
+    session_kp_client = kk_client.kk_3(pkt2, client_kp)
     # dump_session_keypair_hex(session_kp_client)
     assert session_kp_client != None
 
