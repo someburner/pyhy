@@ -37,6 +37,8 @@ __all__ = [
     'hydro_secretbox_probe_verify',
     # sign
     'hydro_sign',
+    'hydro_sign_create',
+    'hydro_sign_verify',
     'hydro_sign_keygen',
     'hydro_sign_keygen_deterministic',
     # kx
@@ -284,6 +286,19 @@ def hydro_sign_keygen_deterministic(seed):
     pair = ffi.new('hydro_sign_keypair *')
     h.hydro_sign_keygen_deterministic(pair, seed)
     return pair
+
+def hydro_sign_create(m, ctx, secret_key):
+    assert (type(ctx) == str) and (len(ctx) == h.hydro_kdf_CONTEXTBYTES)
+    buf = ffi.new('uint8_t[]', h.hydro_sign_BYTES)
+    mlen = len(m)
+    h.hydro_sign_create(buf, m.encode('utf8'), mlen, ctx.encode('utf8'), secret_key)
+    return bytes(buf)
+
+def hydro_sign_verify(sig, m, ctx, public_key):
+    assert (type(ctx) == str) and (len(ctx) == h.hydro_kdf_CONTEXTBYTES)
+    mlen = len(m)
+    result = h.hydro_sign_verify(sig, m.encode('utf-8'), mlen, ctx.encode('utf-8'), public_key)
+    return result == 0
 
 class hydro_sign(object):
     """wrapper class for signature creation, verification"""
