@@ -9,6 +9,33 @@ FAIL_CTX = '1234test'
 INVALID_CTX = '123456789'
 STATIC_MASTER_KEY = bytes(b'\x82\xb8\x22\x0b\x8b\xb1\xf3\x2b\x63\x68\x9c\xca\x0f\x73\x86\xc3\x7a\x09\xbf\x76\xbd\x66\xf0\xca\x40\x17\x62\x94\x7a\x93\x92\x22')
 
+TEST_DATA = {}
+
+STR_TEST_SET = {
+    'name': 'STR_TEST_SET',
+    'type': str,
+    'hash_update_1': 'some data',
+    'hash_update_2': 'some data',
+    'secretbox_1': 'This is a test',
+    'signature_1': 'first chunk',
+    'signature_2': 'second chunk',
+    'signature_3': 'third chunk',
+    'pwhash_1': 'shittypassword',
+}
+
+BYTES_TEST_SET = {
+    'name': 'BYTES_TEST_SET',
+    'type': bytes,
+    'hash_update_1': bytes((0x00, 0x23, 0x42, 0xFF)),
+    'hash_update_2': bytes((0x01, 0x02, 0x03, 0xFF)),
+    'secretbox_1': bytes((0x00, 0x23, 0x42, 0xFF, 0x01, 0x06)),
+    'signature_1': bytes((0x00, 0x23, 0x42, 0xFF)),
+    'signature_2': bytes((0x01, 0x02, 0x42, 0xFF, 0x00)),
+    'signature_3': bytes((0x00, 0x23, 0x42)),
+    'pwhash_1': bytes((0x00, 0x23, 0x42, 0x99, 0x54, 0xFF, 0x00, 0x01)),
+}
+
+TEST_SETS = [ STR_TEST_SET, BYTES_TEST_SET ]
 
 ################################################################################
 # rand - TODO better tests
@@ -47,13 +74,13 @@ def test_hash():
     print('hash_hash (no key):', hash.hex())
 
     h1 = hydro_hash(TEST_CTX, hkey)
-    h1.update('some data')
-    h1.update('more data')
+    h1.update(TEST_DATA['hash_update_1'])
+    h1.update(TEST_DATA['hash_update_2'])
     h1hash = h1.final()
     # print('h1hash:', h1hash.hex())
     h2 = hydro_hash(TEST_CTX, hkey)
-    h2.update('some data')
-    h2.update('more data')
+    h2.update(TEST_DATA['hash_update_1'])
+    h2.update(TEST_DATA['hash_update_2'])
     h2hash = h2.final()
     assert (hydro_equal(h1hash, h2hash) == True)
     print('h1hash == h2hash')
@@ -95,7 +122,6 @@ def test_kdf():
 # Secretbox
 ################################################################################
 TEST_TEXT = 'This is a test'
-FAIL_TEXT = 'This is not a test'
 
 def assert_plaintext(ptxt, check_txt):
     if (ptxt is None) or (ptxt.decode() != check_txt):
@@ -106,11 +132,12 @@ def test_secretbox():
     print('\ntest_secretbox')
     goodkey = hydro_secretbox_keygen()
     # print('Generated key:', key.hex())
-    ctxt = hydro_secretbox_encrypt(TEST_TEXT, 0, TEST_CTX, goodkey)
+    ctxt = hydro_secretbox_encrypt(TEST_DATA['secretbox_1'], 0, TEST_CTX, goodkey)
     # print('Ciphertext: ', ctxt.hex())
     #### pass case
     ptxt = hydro_secretbox_decrypt(ctxt, 0, TEST_CTX, goodkey)
-    assert_plaintext(ptxt, TEST_TEXT)
+    if TEST_DATA['type'] == str:
+        assert_plaintext(ptxt, TEST_DATA['secretbox_1'])
     #### some fail cases
     badkey = hydro_secretbox_keygen()
     ptxt = hydro_secretbox_decrypt(ctxt, 0, TEST_CTX, badkey)
@@ -131,20 +158,35 @@ def test_secretbox_probes():
 ################################################################################
 # Sign
 ################################################################################
+def test_signature_detached():
+    print('\ntest_signature_detached')
+    kp = hydro_sign_keygen()
+    bad_kp = hydro_sign_keygen()
+
+    s1 = hydro_sign_create(TEST_DATA['signature_1'], TEST_CTX, kp.sk)
+    assert hydro_sign_verify(s1, TEST_DATA['signature_1'], TEST_CTX, kp.pk) == True, 'signature verification failed'
+    print('OK: signature verified')
+    assert hydro_sign_verify(s1, TEST_DATA['signature_2'], TEST_CTX, kp.pk) == False, 'signature verification should have failed'
+    print('OK: signature verification failed (bad m)')
+    assert hydro_sign_verify(s1, TEST_DATA['signature_2'], FAIL_CTX, kp.pk) == False, 'signature verification should have failed'
+    print('OK: signature verification failed (bad ctx)')
+    assert hydro_sign_verify(s1, TEST_DATA['signature_2'], TEST_CTX, bad_kp.pk) == False, 'signature verification should have failed'
+    print('OK: signature verification failed (bad pk)')
+
 def test_signature_pass():
     print('\ntest_signature')
     kp = hydro_sign_keygen()
     ss1 = hydro_sign(TEST_CTX)
-    ss1.update('first chunk')
-    ss1.update('second chunk')
+    ss1.update(TEST_DATA['signature_1'])
+    ss1.update(TEST_DATA['signature_2'])
     sig = ss1.final_create(kp.sk)
     # sig = ss1.final_create(kp.sk, wipe=False)
     # dump_keypair_hex(kp)
     # print('Signature: ', sig.hex())
 
     ss2 = hydro_sign(TEST_CTX)
-    ss2.update('first chunk')
-    ss2.update('second chunk')
+    ss2.update(TEST_DATA['signature_1'])
+    ss2.update(TEST_DATA['signature_2'])
     assert ss2.final_verify(sig, kp.pk) == True, 'signature verification failed'
     print('OK: signature verified')
 
@@ -152,15 +194,15 @@ def test_signature_fail():
     print('\ntest_signature_fail')
     kp = hydro_sign_keygen()
     ss1 = hydro_sign(TEST_CTX)
-    ss1.update('first chunk')
-    ss1.update('second chunk')
+    ss1.update(TEST_DATA['signature_1'])
+    ss1.update(TEST_DATA['signature_2'])
     sig = ss1.final_create(kp.sk)
     # print('Signature: ', sig.hex())
 
     ss2 = hydro_sign(TEST_CTX)
-    ss2.update('first chunk')
-    ss2.update('second chunk')
-    ss2.update('third chunk weeeee')
+    ss2.update(TEST_DATA['signature_1'])
+    ss2.update(TEST_DATA['signature_2'])
+    ss2.update(TEST_DATA['signature_3'])
     assert ss2.final_verify(sig, kp.sk) == False, 'signature verification should have failed'
     print('OK: signature verification failed')
 
@@ -168,21 +210,21 @@ def test_sign_readme():
     YOUR_CTX = 'context1'
     kp = hydro_sign_keygen()
     s1 = hydro_sign(YOUR_CTX)
-    s1.update('first chunk')
-    s1.update('second chunk')
+    s1.update(TEST_DATA['signature_1'])
+    s1.update(TEST_DATA['signature_2'])
     sig = s1.final_create(kp.sk)
     print('Signature: ', sig.hex())
 
     s2 = hydro_sign(YOUR_CTX)
-    s2.update('first chunk')
-    s2.update('second chunk')
+    s2.update(TEST_DATA['signature_1'])
+    s2.update(TEST_DATA['signature_2'])
     assert s2.final_verify(sig, kp.pk) == True
 
 ################################################################################
 # kx
 ################################################################################
 def test_kx_keypairs():
-    print('\ntest_kx_keypairs')
+    print('test_kx_keypairs')
     kp = hydro_kx_keygen()
     pk_hex, sk_hex = bytes(kp.pk).hex(), bytes(kp.sk).hex()
     print('Serialized')
@@ -230,7 +272,7 @@ def test_kx_n():
 
     assert (hydro_equal(session_kp_client.tx, session_kp_server.rx) == True)
     assert (hydro_equal(session_kp_client.rx, session_kp_server.tx) == True)
-    print('\ntest_kx_n finished successfully')
+    print('test_kx_n finished successfully')
     return
 
 def test_kx_kk():
@@ -263,7 +305,7 @@ def test_kx_kk():
 
     assert (hydro_equal(session_kp_client.tx, session_kp_server.rx) == True)
     assert (hydro_equal(session_kp_client.rx, session_kp_server.tx) == True)
-    print('\ntest_kx_kk finished successfully')
+    print('test_kx_kk finished successfully')
     return
 
 def test_kx_xx():
@@ -308,11 +350,11 @@ def test_kx_xx():
     #
     assert (hydro_equal(session_kp_client.tx, session_kp_server.rx) == True)
     assert (hydro_equal(session_kp_client.rx, session_kp_server.tx) == True)
-    print('\ntest_kx_xx finished successfully')
+    print('test_kx_xx finished successfully')
     return
 
 def test_kx():
-    print('\ntest_kx (all)')
+    print('\n------------------------- test_kx (all) -------------------------')
     test_kx_keypairs()
     test_kx_n()
     test_kx_kk()
@@ -321,16 +363,15 @@ def test_kx():
 ################################################################################
 # pwhash
 ################################################################################
-TEST_PW = 'shittypassword'
 TEST_PW_CTX = 'password'
 
 def test_pwhash():
     print('\ntest_pwhash')
     master_key = hydro_pwhash_keygen()
     # print('pwhash master_key:', master_key.hex() )
-    pwkey = hydro_pwhash_deterministic(TEST_PW, TEST_PW_CTX, master_key)
-    print('pwhash for %s: %s' % (TEST_PW, pwkey.hex()))
-    test_pwkey = hydro_pwhash_deterministic(TEST_PW, TEST_PW_CTX, master_key)
+    pwkey = hydro_pwhash_deterministic(TEST_DATA['pwhash_1'], TEST_PW_CTX, master_key)
+    print('pwhash for %s: %s' % (str(TEST_DATA['pwhash_1']), pwkey.hex()))
+    test_pwkey = hydro_pwhash_deterministic(TEST_DATA['pwhash_1'], TEST_PW_CTX, master_key)
     assert (hydro_equal(pwkey, test_pwkey) == True)
     return
 
@@ -372,7 +413,7 @@ def test_hexify():
 
 def test_helpers():
     import time
-    print('\ntest_helpers')
+    print('test_helpers')
     nbuf = hydro_random_buf( 32 )
     print('memzero before: %s' % nbuf.hex())
     hydro_memzero(nbuf, dump_loc=True)
@@ -406,32 +447,42 @@ def test_helpers():
 ################################################################################
 
 def main():
+    global TEST_DATA
     # wrapper
     print( hydro_version() )
     print( pyhy_version() )
-    ### helpers ###
-    test_helpers()
-    ### pwhash ###
-    test_pwhash()
-    ### rand ###
-    test_rand()
-    ### hash ###
-    test_hash()
-    ### kdf ###
-    test_kdf()
-    ### secretbox ###
-    test_secretbox()
-    test_secretbox_probes()
-    ### sign ###
-    test_signature_pass()
-    test_signature_fail()
-    test_sign_readme()
-    test_other()
-    test_hexify()
-    ### kx ###
-    test_kx()
+    TEST_SETS = [ STR_TEST_SET, BYTES_TEST_SET ]
+    for set in TEST_SETS:
+        print('\n===============================================================')
+        print('          Running tests with set: %s' % set['name'])
+        print('===============================================================')
+        TEST_DATA = set
+        ### helpers ###
+        test_helpers()
+        ### pwhash ###
+        test_pwhash()
+        ### rand ###
+        test_rand()
+        ### hash ###
+        test_hash()
+        ### kdf ###
+        test_kdf()
+        ### secretbox ###
+        test_secretbox()
+        test_secretbox_probes()
+        ### sign ###
+        test_signature_detached()
+        test_signature_pass()
+        test_signature_fail()
+        test_sign_readme()
+        test_other()
+        test_hexify()
+        ### kx ###
+        test_kx()
+        print('===============================================================')
+        print('               Test set %s COMPLETE' % set['name'])
+        print('===============================================================\n')
     return
-
 
 if __name__ == '__main__':
     main()
