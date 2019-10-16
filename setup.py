@@ -5,6 +5,7 @@ from setuptools import setup
 
 NAME = 'pyhy'
 PACKAGES = [ 'pyhy' ]
+REQUIRES = [ 'cffi>=1.11.4' ]
 SHORT_DESC = 'bindings for libhydrogen using cffi'
 KEYWORDS = [ 'cryptography', 'crypto', 'embedded', 'encryption', 'libhydrogen', 'hydrogen' ]
 # http://pypi.python.org/pypi?%3Aaction=list_classifiers
@@ -37,6 +38,7 @@ if __name__ == '__main__':
         version=about['__version__'],
         description=SHORT_DESC,
         long_description=readme,
+        long_description_content_type='text/markdown',
         license='BSD',
         url='https://github.com/someburner/pyhy',
         author='Jeff Hufford',
@@ -45,9 +47,9 @@ if __name__ == '__main__':
         keywords=KEYWORDS,
         classifiers=CLASSIFIERS,
         python_requires='>=3.4',
-        setup_requires=["cffi>=1.0.0"],
+        setup_requires=REQUIRES,
         cffi_modules=["./bind.py:ffibuilder"],
-        install_requires=["cffi>=1.0.0"],
+        install_requires=REQUIRES,
         packages=PACKAGES,
         package_data={
             'pyhy': [ './*.py' ]

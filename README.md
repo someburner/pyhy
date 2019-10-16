@@ -10,12 +10,13 @@ on system. Testing/development has been done on linux, specifically Ubuntu
 
 ```sh
 pip3 install pyhy
+pip3 install paho-mqtt # for running the demo
 ```
 
 ## Usage
 
 * An end-to-end example for `kx` (N, KK, XX) is provided using [paho-mqtt](https://github.com/eclipse/paho.mqtt.python).
-See [demo](demo) for instructions.
+See [demo](https://github.com/someburner/pyhy/tree/master/demo) for instructions.
 * The [wiki](https://github.com/someburner/pyhy/wiki) contains a few usage
 examples.
 * [tests.py](https://github.com/someburner/pyhy/blob/master/test.py) is fairly
