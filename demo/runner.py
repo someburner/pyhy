@@ -11,7 +11,7 @@ import pyhy
 
 KEY_DB_NAME = 'keys.db'
 
-MQTT_HOST = "iot.eclipse.org"
+MQTT_HOST = "test.mosquitto.org"
 MQTT_PORT = 1883
 MQTT_KEEPALIVE = 60
 
@@ -104,7 +104,8 @@ def on_msg_client(client, userdata, msg):
                 return
             pkt2 = msg.payload
             kk_client = userdata['kx'] # kx client created on init
-            session_kp_client = kk_client.kk_3(pkt2, pyhy.unhexify(userdata['kp']['server-pk']))
+            client_kp = get_current_kp(userdata)
+            session_kp_client = kk_client.kk_3(pkt2, client_kp)
             if session_kp_client is not None:
                 userdata['session_kp'] = session_kp_client
                 userdata['established'] = True
@@ -154,6 +155,7 @@ def on_msg_server(client, userdata, msg):
             # pyhy.dump_session_keypair_hex(session_kp_server)
             userdata['session_kp'] = session_kp_server
             userdata['established'] = True
+            print('Server (n) - Established')
         ################################## KK ##################################
         elif userdata['type'] == 'kk':
             pkt1 = msg.payload
@@ -161,6 +163,7 @@ def on_msg_server(client, userdata, msg):
             session_kp_server, pkt2 = pyhy.hydro_kx_kk_2(pkt1, pyhy.unhexify(userdata['kp']['client-pk']), server_kp)
             userdata['session_kp'] = session_kp_server
             userdata['established'] = True
+            print('Server (kk) - Established')
             publish.single(SERVER_PUB_TOPIC, pkt2, hostname=MQTT_HOST)
         ################################## XX ##################################
         elif userdata['type'] == 'xx':
@@ -202,7 +205,6 @@ def poll_client(client):
     if ( (now - prev_ms) > TX_DELAY_MS ):
         prev_ms = now
         print('Client Tx')
-        # print(client._userdata)
         if client._userdata['established']:
             ctxt = pyhy.hydro_secretbox_encrypt(str('Testing %d' % now), 0, CTX, client._userdata['session_kp'].tx)
             client.publish(CLIENT_PUB_TOPIC, ctxt)
