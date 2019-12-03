@@ -4,7 +4,7 @@ from codecs import open
 from setuptools import setup
 
 NAME = 'pyhy'
-PACKAGES = [ 'pyhy' ]
+PACKAGES = [ 'pyhy', 'libhydrogen' ]
 REQUIRES = [ 'cffi>=1.11.4' ]
 SHORT_DESC = 'bindings for libhydrogen using cffi'
 KEYWORDS = [ 'cryptography', 'crypto', 'embedded', 'encryption', 'libhydrogen', 'hydrogen' ]
@@ -48,10 +48,14 @@ if __name__ == '__main__':
         classifiers=CLASSIFIERS,
         python_requires='>=3.4',
         setup_requires=REQUIRES,
-        cffi_modules=["./bind.py:ffibuilder"],
+        cffi_modules=["./pyhy/bind.py:ffibuilder"],
         install_requires=REQUIRES,
         packages=PACKAGES,
         package_data={
-            'pyhy': [ './*.py' ]
-        }
+            'pyhy': [ '.py', '*.h' ],
+            'libhydrogen': [ '*.c', '*.h', 'impl/*', 'impl/gimli-core/*' ]
+        },
+	exclude_package_data={
+            'libhydrogen': [ '*.c', '*.h', 'impl/*', 'impl/gimli-core/*' ]
+       }
     )
